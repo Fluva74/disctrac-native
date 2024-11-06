@@ -46,12 +46,12 @@ const Login = () => {
   return (
     <View style = {styles.container}>
      {/* <KeyboardAvoidingView behavior="padding">    */}
-        <Text>Login</Text>
+        <Text style = {styles.loginHeader}>disctrac</Text>
       <TextInput value={email} style = {styles.input} placeholder="Email" autoCapitalize="none" onChangeText={(text) => setEmail(text)}></TextInput>
       <TextInput secureTextEntry={true} value={password} style = {styles.input} placeholder="password" autoCapitalize="none" onChangeText={(text) => setPassword(text)}></TextInput>
 
       { loading ? (
-        <ActivityIndicator size="large" color="#0000ff" /> 
+        <ActivityIndicator size="large" color="#4CAF50" style ={styles.loadingIndicator}/> 
        ) : (
        <>
       <Button title="Login"  onPress={signIn} />
