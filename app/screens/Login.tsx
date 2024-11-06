@@ -1,86 +1,69 @@
-import { View, TextInput, Text, ActivityIndicator, Button, Keyboard, KeyboardAvoidingView} from 'react-native';
+import { View, TextInput, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import React, { useState } from 'react';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../App'; // Adjust the path if necessary
 import styles from '../styles';
 
-
 const Login = () => {
-    const [email, setEmail] = React.useState('');
-    const [password, setPassword] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
-    const auth = FIREBASE_AUTH;
-    // const db = FIREBASE_DB;
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     const signIn = async () => {
         setLoading(true);
         try {
-            const response = await signInWithEmailAndPassword(auth, email, password);
+            const response = await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
             console.log(response);
-            alert('Check your emails!')
+            alert('Check your emails!');
         } catch (error: any) {
             console.log(error);
             alert('Sign In failed: ' + error.message);
-        }finally {
+        } finally {
             setLoading(false);
         }
-        setLoading(false);
     };
 
-    const signUp = async () => {
-        setLoading(true);
-        try {
-            const response = await createUserWithEmailAndPassword(auth, email, password);
-            console.log(response);
-            alert('Check your emails!')
-        } catch (error: any) {
-            console.log(error);
-            alert('Sign Up failed: ' + error.message);
-        }finally {
-            setLoading(false);
-        }
-        setLoading(false);
+    const goToAccountSelection = () => {
+        navigation.navigate('AccountSelection'); // This should now work if AccountSelection is in the stack
     };
 
-  return (
-    <View style = {styles.container}>
-     {/* <KeyboardAvoidingView behavior="padding">    */}
-        <Text style = {styles.loginHeader}>disctrac</Text>
-      <TextInput value={email} style = {styles.input} placeholder="Email" autoCapitalize="none" onChangeText={(text) => setEmail(text)}></TextInput>
-      <TextInput secureTextEntry={true} value={password} style = {styles.input} placeholder="password" autoCapitalize="none" onChangeText={(text) => setPassword(text)}></TextInput>
+    return (
+        <View style={styles.container}>
+            <Text style={styles.loginHeader}>disctrac</Text>
+            
+            <TextInput
+                value={email}
+                style={styles.input}
+                placeholder="Email"
+                autoCapitalize="none"
+                onChangeText={(text) => setEmail(text)}
+            />
+            <TextInput
+                secureTextEntry
+                value={password}
+                style={styles.input}
+                placeholder="Password"
+                autoCapitalize="none"
+                onChangeText={(text) => setPassword(text)}
+            />
 
-      { loading ? (
-        <ActivityIndicator size="large" color="#4CAF50" style ={styles.loadingIndicator}/> 
-       ) : (
-       <>
-      <Button title="Login"  onPress={signIn} />
-      <Button title="Create Account" onPress={signUp} />
-      </>
-       )
-    }
-    {/* </KeyboardAvoidingView> */}
-    </View>
-  );
+            {loading ? (
+                <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
+            ) : (
+                <>
+                    <TouchableOpacity style={styles.button} onPress={signIn}>
+                        <Text style={styles.buttonText}>Login</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.button} onPress={goToAccountSelection}>
+                        <Text style={styles.buttonText}>Create Account</Text>
+                    </TouchableOpacity>
+                </>
+            )}
+        </View>
+    );
 };
 
 export default Login;
-
-// const styles = StyleSheet.create({
-//     container: {
-//         flex: 1,
-//         backgroundColor: '#fff',
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//     },
-//     input: {
-//         height: 40,
-//         width: '90%',
-//         margin: 12,
-//         borderWidth: 1,
-//         padding: 10,
-//     },
-   
-// });
-
-
