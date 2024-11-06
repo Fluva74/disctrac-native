@@ -42,5 +42,6 @@ android/
 
 # Environment variables
 .env
+declarations.d.ts
 
 
