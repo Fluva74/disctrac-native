@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../App';
 import { FIREBASE_DB } from '../../FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
+import { signOut } from 'firebase/auth';
 import styles from '../styles'; // Assuming styles.js is set up with current branding styles
 
 const PlayerHome = () => {
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const [firstName, setFirstName] = useState('');
 
     // Fetch the user's first name from Firestore
@@ -27,6 +31,22 @@ const PlayerHome = () => {
         fetchUserData();
     }, []);
 
+     // Sign-out function
+     const handleSignOut = async () => {
+        try {
+            await signOut(FIREBASE_AUTH);
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+            });
+        } catch (error) {
+            console.error('Error signing out:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+        }
+    };
+
+    
+
     return (
         <View style={styles.container}>
             {/* Header Welcome Message */}
@@ -45,6 +65,10 @@ const PlayerHome = () => {
             <TouchableOpacity style={styles.linkButton} onPress={() => Alert.alert('Navigating to Inventory...')}>
                 <Text style={styles.linkText}>Inventory</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+                <Text style={styles.buttonText}>Sign Out</Text>
+            </TouchableOpacity>
+           
         </View>
     );
 };

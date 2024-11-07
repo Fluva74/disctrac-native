@@ -12,10 +12,12 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH } from './FirebaseConfig';
 
 
+
 export type InsideStackParamList = {
     PlayerHome: undefined;
     List: undefined;
     Details: undefined;
+
 };
 
 export type RootStackParamList = {
@@ -24,6 +26,7 @@ export type RootStackParamList = {
     AccountSelection: undefined;
     PlayerCreate: undefined;
     StoreCreate: undefined;
+
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -49,15 +52,21 @@ export default function App() {
     }, []);
 
     return (
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName="Login">
-                <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
-                <Stack.Screen name="AccountSelection" component={AccountSelection} />
-                <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
-                <Stack.Screen name="StoreCreate" component={StoreCreate} />
-                {/* Conditionally render Inside layout if the user is authenticated */}
-                {user && <Stack.Screen name="Inside" component={InsideLayout} options={{ headerShown: false }} />}
-            </Stack.Navigator>
-        </NavigationContainer>
+      <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+          {user ? (
+              <>
+                  <Stack.Screen name="Inside" component={InsideLayout} options={{ headerShown: false }} />
+              </>
+          ) : (
+              <>
+                  <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
+                  <Stack.Screen name="AccountSelection" component={AccountSelection} />
+                  <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
+                  <Stack.Screen name="StoreCreate" component={StoreCreate} />
+              </>
+          )}
+      </Stack.Navigator>
+  </NavigationContainer>
     );
 }
