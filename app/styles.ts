@@ -66,4 +66,48 @@ export default StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-});
+    discInfo: {
+        marginVertical: 20,
+        alignItems: 'center',
+    },
+    discText: {
+        fontSize: 16,
+        color: '#333',
+        marginBottom: 10,
+    },
+    cancelButton: {
+        backgroundColor: '#d9534f', // Red color for cancel
+        marginTop: 20,
+    },
+    table: {
+        width: '100%',
+        paddingHorizontal: 20,
+        marginVertical: 20,
+    },
+    row: {
+        flexDirection: 'row',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ddd',
+    },
+    headerCell: {
+        flex: 1,
+        fontWeight: 'bold',
+        fontSize: 16,
+        color: '#4CAF50',
+        textAlign: 'center',
+    },
+    cell: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333',
+        textAlign: 'center',
+    },
+    noDiscsText: {
+        fontSize: 18,
+        color: '#888',
+        marginVertical: 20,
+        textAlign: 'center',
+    },
+    },
+);

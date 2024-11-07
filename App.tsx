@@ -7,6 +7,8 @@ import AccountSelection from './app/screens/AccountSelection';
 import PlayerCreate from './app/screens/PlayerCreate';
 import StoreCreate from './app/screens/StoreCreate';
 import PlayerHome from './app/screens/PlayerHome';
+import Inventory from './app/screens/Inventory'; // Add Inventory here
+import AddDisc from './app/screens/AddDisc';     // Add AddDisc here
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH } from './FirebaseConfig';
@@ -17,6 +19,8 @@ export type InsideStackParamList = {
     PlayerHome: undefined;
     List: undefined;
     Details: undefined;
+    Inventory: undefined; // Add Inventory here if not already included
+    AddDisc: undefined;    // Add AddDisc here
 
 };
 
@@ -38,6 +42,8 @@ function InsideLayout() {
             <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
             <InsideStack.Screen name="List" component={List} />
             <InsideStack.Screen name="Details" component={Details} />
+            <InsideStack.Screen name="Inventory" component={Inventory} /> 
+            <InsideStack.Screen name="AddDisc" component={AddDisc} />    
         </InsideStack.Navigator>
     );
 }
