@@ -46,4 +46,24 @@ export default StyleSheet.create({
     loadingIndicator: {
         marginVertical: 20,
     },
+    welcomeText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#4CAF50', // Use your brand's primary color
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    linkButton: {
+        backgroundColor: '#4CAF50', // Use your brand's primary color
+        padding: 15,
+        borderRadius: 5,
+        width: '80%',
+        alignItems: 'center',
+        marginVertical: 10,
+    },
+    linkText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
 });

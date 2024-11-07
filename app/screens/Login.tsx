@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../../App'; // Adjust the path if necessary
+import { RootStackParamList } from '../../App';
 import styles from '../styles';
 
 const Login = () => {
@@ -11,11 +11,12 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+    const auth = FIREBASE_AUTH;
 
     const signIn = async () => {
         setLoading(true);
         try {
-            const response = await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
+            const response = await signInWithEmailAndPassword(auth, email, password);
             console.log(response);
             alert('Check your emails!');
         } catch (error: any) {
@@ -27,13 +28,15 @@ const Login = () => {
     };
 
     const goToAccountSelection = () => {
-        navigation.navigate('AccountSelection'); // This should now work if AccountSelection is in the stack
+        navigation.navigate('AccountSelection');
     };
 
     return (
         <View style={styles.container}>
-            <Text style={styles.loginHeader}>disctrac</Text>
+            {/* Header text wrapped in <Text> */}
+            <Text style={styles.loginHeader}>disctrac</Text> 
             
+            {/* Email input */}
             <TextInput
                 value={email}
                 style={styles.input}
@@ -41,6 +44,8 @@ const Login = () => {
                 autoCapitalize="none"
                 onChangeText={(text) => setEmail(text)}
             />
+
+            {/* Password input */}
             <TextInput
                 secureTextEntry
                 value={password}
@@ -54,6 +59,7 @@ const Login = () => {
                 <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
             ) : (
                 <>
+                    {/* Replaced Button with TouchableOpacity and added <Text> inside */}
                     <TouchableOpacity style={styles.button} onPress={signIn}>
                         <Text style={styles.buttonText}>Login</Text>
                     </TouchableOpacity>
