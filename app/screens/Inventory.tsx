@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback  } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { InsideStackParamList } from '../../App';
 import styles from '../styles';
 
@@ -11,19 +11,6 @@ const Inventory = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
     const [discs, setDiscs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        // Listen for authentication state changes to get the correct user ID
-        const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (user) => {
-            if (user) {
-                fetchDiscs(user.uid);  // Fetch discs for the current user
-            } else {
-                setDiscs([]);          // Clear discs when user logs out
-            }
-        });
-
-        return () => unsubscribe(); // Clean up the listener on component unmount
-    }, []);
 
     const fetchDiscs = async (userId: string) => {
         setLoading(true);
@@ -36,8 +23,8 @@ const Inventory = () => {
                 id: doc.id,
                 ...doc.data()
             }));
-            
-            setDiscs(discsList);
+
+            setDiscs(discsList); // Update discs state to display on the page
         } catch (error) {
             console.error('Error fetching discs:', error);
             Alert.alert('Error', 'Could not load inventory.');
@@ -46,7 +33,16 @@ const Inventory = () => {
         }
     };
 
-    // Render a single disc item
+    // Fetch discs whenever the screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            const user = FIREBASE_AUTH.currentUser;
+            if (user) {
+                fetchDiscs(user.uid);
+            }
+        }, [])
+    );
+
     const renderDisc = ({ item }: { item: any }) => (
         <View style={styles.row}>
             <Text style={styles.cell}>{item.mold}</Text>
@@ -65,14 +61,11 @@ const Inventory = () => {
                 <Text style={styles.noDiscsText}>You have no discs in your bag.</Text>
             ) : (
                 <View style={styles.table}>
-                    {/* Table header */}
                     <View style={styles.row}>
                         <Text style={styles.headerCell}>Mold</Text>
                         <Text style={styles.headerCell}>Company</Text>
                         <Text style={styles.headerCell}>Color</Text>
                     </View>
-
-                    {/* Table rows */}
                     <FlatList
                         data={discs}
                         renderItem={renderDisc}
@@ -81,7 +74,6 @@ const Inventory = () => {
                 </View>
             )}
 
-            {/* CTA to add a disc */}
             <TouchableOpacity 
                 style={styles.button} 
                 onPress={() => navigation.navigate('AddDisc')}
