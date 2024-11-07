@@ -8,38 +8,48 @@ import { doc, getDoc } from 'firebase/firestore';
 import styles from '../styles';
 
 const PlayerHome = () => {
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Use RootStackParamList for navigation
-    const [firstName, setFirstName] = useState('');
+    const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
+    const [firstName, setFirstName] = useState<string>('');
 
     useEffect(() => {
         const fetchUserData = async () => {
             const user = FIREBASE_AUTH.currentUser;
             if (user) {
+                console.log("User UID:", user.uid); // Log the UID for debugging
+    
                 try {
                     const docRef = doc(FIREBASE_DB, 'players', user.uid);
                     const docSnap = await getDoc(docRef);
-
+    
                     if (docSnap.exists()) {
-                        setFirstName(docSnap.data().firstName);
+                        const userData = docSnap.data();
+                        console.log("User Data from Firestore:", userData); // Log fetched data
+                        setFirstName(userData.firstName || 'Guest');
                     } else {
-                        console.log('No such document!');
+                        console.log('No document found for this user UID in Firestore.');
+                        setFirstName('Guest');
                     }
                 } catch (error) {
                     console.error('Error fetching user data:', error);
+                    Alert.alert('Error', 'Failed to load user data.');
+                    setFirstName('Guest');
                 }
+            } else {
+                console.log("No user is logged in.");
+                setFirstName('Guest');
             }
         };
-
         fetchUserData();
-    }, []);
+    }, [firstName]);
 
-    // Sign-out function
     const handleSignOut = async () => {
         try {
-            await signOut(FIREBASE_AUTH);
-            navigation.reset({
+            await FIREBASE_AUTH.signOut();
+            
+            // Reset the root navigation stack to go to Login
+            (navigation as any).reset({
                 index: 0,
-                routes: [{ name: 'Login' as keyof RootStackParamList }], // Reset to 'Login' in RootStack
+                routes: [{ name: 'Login' }],
             });
         } catch (error) {
             console.error('Error signing out:', error);
@@ -49,17 +59,19 @@ const PlayerHome = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.welcomeText}>Welcome Back, {firstName}!</Text>
+            <Text style={styles.welcomeText}>Welcome, {firstName}!</Text>
             
-            {/* Navigation button to Inventory */}
-            <TouchableOpacity 
-                style={styles.linkButton} 
-                onPress={() => navigation.navigate('Inside', { screen: 'Inventory' } as any)}
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => navigation.navigate('Inventory')}
             >
-                <Text style={styles.linkText}>Inventory</Text>
+                <Text style={styles.buttonText}>Inventory</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={handleSignOut}
+            >
                 <Text style={styles.buttonText}>Sign Out</Text>
             </TouchableOpacity>
         </View>

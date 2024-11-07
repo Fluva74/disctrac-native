@@ -109,5 +109,12 @@ export default StyleSheet.create({
         marginVertical: 20,
         textAlign: 'center',
     },
+    selectedRow: {
+        backgroundColor: '#28a745', // Replace with your branded green color
+    },
+    trashText: {
+        color: 'red',
+        marginLeft: 10,
+    },
     },
 );

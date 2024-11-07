@@ -53,7 +53,7 @@ const AddDisc = () => {
                 ...discData             // Add the disc data fields
             });
             
-            Alert.alert("Success", "Disc added to your inventory.");
+            // Alert.alert("Success", "Disc added to your inventory.");
             navigation.navigate("Inventory"); // Navigate back to Inventory after adding the disc
         } catch (error) {
             console.error("Error adding disc to inventory:", error);
