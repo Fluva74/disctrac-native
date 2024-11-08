@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback  } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import { InsideStackParamList } from '../../App';
-
+import Icon from 'react-native-vector-icons/FontAwesome'; // Import FontAwesome icon set
+import { FontAwesome } from '@expo/vector-icons'; // Import FontAwesome icon set
 import styles from '../styles';
 
 const Inventory = () => {
@@ -35,7 +35,6 @@ const Inventory = () => {
         }
     };
 
-    // Fetch discs whenever the screen is focused
     useFocusEffect(
         useCallback(() => {
             const user = FIREBASE_AUTH.currentUser;
@@ -82,14 +81,13 @@ const Inventory = () => {
                 style={[styles.row, isSelected && styles.selectedRow]}
                 onPress={() => handleSelectDisc(item.id)}
             >
-                <Text style={styles.cell}>{item.mold}</Text>
-                <Text style={styles.cell}>{item.company}</Text>
-                <Text style={styles.cell}>{item.color}</Text>
-
+                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.mold}</Text>
+                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.company}</Text>
+                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.color}</Text>
                 {isSelected && (
-                    <TouchableOpacity onPress={() => handleDeleteDisc(item.id)}>
-                        <Text style={styles.trashText}>Trash</Text>
-                    </TouchableOpacity>
+                     <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                     <FontAwesome name="trash" size={20} style={styles.trashIcon} />
+                 </TouchableOpacity>
                 )}
             </TouchableOpacity>
         );

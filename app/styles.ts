@@ -110,10 +110,13 @@ export default StyleSheet.create({
         textAlign: 'center',
     },
     selectedRow: {
-        backgroundColor: '#28a745', // Replace with your branded green color
+        backgroundColor: '#388E3C', // Replace with your branded green color
+    },
+    selectedRowText: {
+        color: '#ffffff', // White text for selected row
     },
     trashText: {
-        color: 'red',
+        color: 'white',
         marginLeft: 10,
     },
     picker: {
@@ -138,5 +141,12 @@ export default StyleSheet.create({
         color: '#333',
 
     },
+    trashIcon: {
+        marginRight: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white'
+    },
+    
     },
 );
