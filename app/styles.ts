@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export default StyleSheet.create({
     container: {
@@ -115,6 +115,28 @@ export default StyleSheet.create({
     trashText: {
         color: 'red',
         marginLeft: 10,
+    },
+    picker: {
+        height: 50,
+        width: '100%',
+        color: '#333',
+
+    },
+    label: {
+        fontSize: 16,
+        marginBottom: 5,
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: '#4CAF50',
+        borderRadius: 10,
+        // marginBottom: 15,
+        width: '90%',
+        paddingVertical: Platform.OS === 'ios' ? 12 : 0, // Padding to help display the picker
+        backgroundColor: '#ffffff',
+        marginVertical: 10,
+        color: '#333',
+
     },
     },
 );

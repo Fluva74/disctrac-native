@@ -6,6 +6,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App'; 
 import styles from '../styles';
+import { Picker } from '@react-native-picker/picker';
 
 const PlayerCreate = () => {
     const [firstName, setFirstName] = useState('');
@@ -15,9 +16,17 @@ const PlayerCreate = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [phone, setPhone] = useState('');
     const [city, setCity] = useState('');
-    const [state, setState] = useState('');
+    const [state, setState] = useState(''); // Updated state value from Picker
     const [pdga, setPdga] = useState('');
     const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Typed navigation
+
+    const states = [
+        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+    ];
 
     const handleSubmit = async () => {
         if (!firstName || !lastName || !email || !password || !confirmPassword || !city || !state) {
@@ -30,11 +39,9 @@ const PlayerCreate = () => {
         }
 
         try {
-            // Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
             const user = userCredential.user;
 
-            // Add additional user data to Firestore
             await addDoc(collection(FIREBASE_DB, 'players'), {
                 uid: user.uid,
                 firstName,
@@ -46,7 +53,6 @@ const PlayerCreate = () => {
                 pdga
             });
 
-            // Navigate to PlayerHome after successful registration
             navigation.navigate('Inside', { screen: 'PlayerHome' });
 
         } catch (error: any) {
@@ -106,12 +112,24 @@ const PlayerCreate = () => {
                 value={city}
                 onChangeText={setCity}
             />
-            <TextInput
-                placeholder="State (Required)"
-                style={styles.input}
-                value={state}
-                onChangeText={setState}
-            />
+
+            {/* <Text style={styles.label}>State (Required)</Text> */}
+            <View style={styles.pickerContainer}>
+                <Picker
+                    selectedValue={state}
+                    onValueChange={(itemValue) => {
+                        setState(itemValue);
+                        console.log("Selected State:", itemValue); // Log the selected state for debugging
+                    }}
+                    style={styles.picker}
+                >
+                    <Picker.Item label="Select your state" value="" />
+                    {states.map((stateCode) => (
+                        <Picker.Item key={stateCode} label={stateCode} value={stateCode} />
+                    ))}
+                </Picker>
+            </View>
+
             <TextInput
                 placeholder="PDGA# (Optional)"
                 style={styles.input}

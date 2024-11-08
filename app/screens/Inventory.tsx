@@ -65,7 +65,6 @@ const Inventory = () => {
                             await deleteDoc(doc(FIREBASE_DB, "userDiscs", discId));
                             setDiscs((prevDiscs) => prevDiscs.filter((disc) => disc.id !== discId)); // Remove disc from state
                             setSelectedDiscId(null);
-                            Alert.alert("Success", "Disc removed from inventory.");
                         } catch (error) {
                             console.error("Error deleting disc:", error);
                             Alert.alert("Error", "Failed to remove disc.");
