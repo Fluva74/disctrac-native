@@ -44,4 +44,7 @@ android/
 .env
 declarations.d.ts
 
+serviceAccountKey.json
+
+
 
