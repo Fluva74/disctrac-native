@@ -1,34 +1,36 @@
 // AddDisc.tsx
 
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App'; // Import InsideStackParamList correctly
 import styles from '../styles';
 
-
 const AddDisc = () => {
-    const [discNumber, setDiscNumber] = useState('');
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [scanned, setScanned] = useState(false);
     const [discData, setDiscData] = useState<any | null>(null);
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
 
-    // Function to fetch disc data based on disc number
-    const fetchDiscData = async () => {
-        if (!discNumber) {
-            Alert.alert("Please enter a disc number.");
-            return;
-        }
-        
+    useEffect(() => {
+        const getBarCodeScannerPermissions = async () => {
+            const { status } = await BarCodeScanner.requestPermissionsAsync();
+            setHasPermission(status === 'granted');
+        };
+
+        getBarCodeScannerPermissions();
+    }, []);
+
+    const fetchDiscData = async (discNumber: string) => {
         try {
-            // Query `discmain` collection where `uid` field matches `discNumber`
             const discsRef = collection(FIREBASE_DB, 'discmain');
             const q = query(discsRef, where('uid', '==', discNumber));
             const querySnapshot = await getDocs(q);
-    
+
             if (!querySnapshot.empty) {
-                // Retrieve the first document that matches the query
                 const docSnap = querySnapshot.docs[0];
                 setDiscData(docSnap.data());
             } else {
@@ -41,42 +43,53 @@ const AddDisc = () => {
         }
     };
 
-    // Function to add the disc to the user's inventory
+    const handleBarCodeScanned = ({ data }: { data: string }) => {
+        setScanned(true);
+        fetchDiscData(data);
+    };
+
     const addDiscToInventory = async () => {
         const user = FIREBASE_AUTH.currentUser;
         if (!user || !discData) return;
-    
+
         try {
             const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
             await addDoc(userDiscsRef, {
-                userId: user.uid,       // Store the user’s unique ID in `userId`
-                ...discData             // Add the disc data fields
+                userId: user.uid,
+                ...discData,
             });
-            
-            // Alert.alert("Success", "Disc added to your inventory.");
-            navigation.navigate("Inventory"); // Navigate back to Inventory after adding the disc
+            navigation.navigate("Inventory");
         } catch (error) {
             console.error("Error adding disc to inventory:", error);
             Alert.alert("Error", "Failed to add disc to inventory.");
         }
     };
-    
+
+    if (hasPermission === null) {
+        return <Text>Requesting for camera permission</Text>;
+    }
+    if (hasPermission === false) {
+        return <Text>No access to camera</Text>;
+    }
+
     return (
         <View style={styles.container}>
             <Text style={styles.loginHeader}>Add Disc</Text>
 
-            <TextInput
-                placeholder="Enter Disc Number (e.g., disc_15)"
-                style={styles.input}
-                value={discNumber}
-                onChangeText={setDiscNumber}
-            />
+            {!scanned ? (
+                <BarCodeScanner
+                    onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+                    style={{ height: 300, width: 300 }}
+                />
+            ) : (
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => setScanned(false)}
+                >
+                    <Text style={styles.buttonText}>Scan Code Again</Text>
+                </TouchableOpacity>
+            )}
 
-            <TouchableOpacity style={styles.button} onPress={fetchDiscData}>
-                <Text style={styles.buttonText}>Fetch Disc Info</Text>
-            </TouchableOpacity>
-
-            {/* Display disc info if available */}
             {discData && (
                 <View style={styles.discInfo}>
                     <Text style={styles.discText}>Mold: {discData.mold}</Text>
@@ -89,9 +102,8 @@ const AddDisc = () => {
                 </View>
             )}
 
-            {/* Cancel button */}
-            <TouchableOpacity 
-                style={[styles.button, styles.cancelButton]} 
+            <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
                 onPress={() => navigation.navigate("Inventory")}
             >
                 <Text style={styles.buttonText}>Cancel</Text>
