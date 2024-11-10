@@ -147,6 +147,21 @@ export default StyleSheet.create({
         alignItems: 'center',
         color: 'white'
     },
-    
+    header:{
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#2E7D32', // Bold green for sports/outdoors
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
     },
-);
+    newDiscForm: {
+        marginVertical: 20,
+        padding: 10,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 5,
+        width: '100%',
+        backgroundColor: '#e9ecef',
+      },
+});
