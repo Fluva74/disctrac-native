@@ -25,13 +25,15 @@ const AddDisc = () => {
   const [newDisc, setNewDisc] = useState<NewDiscData>({ company: '', mold: '', color: '' });
   const [showScanner, setShowScanner] = useState(false);
   const [isNewDisc, setIsNewDisc] = useState(false);
+  const [scanned, setScanned] = useState(false); // New state to prevent multiple alerts
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
 
   const initiateScan = () => {
-    // Clear any previous scan data
+    // Reset all states before starting a new scan
     setDiscData(null);
     setNewDisc({ company: '', mold: '', color: '' });
     setIsNewDisc(false);
+    setScanned(false); // Reset scanned state
     setShowScanner(true);
   };
 
@@ -46,7 +48,29 @@ const AddDisc = () => {
       const data = docSnap.data() as DiscData;
       console.log("Disc found in database:", data);
 
-      // Check if any attributes are N/A
+      // Check if this disc is already in another player's inventory
+      const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
+      const ownershipQuery = query(userDiscsRef, where('uid', '==', scannedCode));
+      const ownershipSnapshot = await getDocs(ownershipQuery);
+
+      if (!ownershipSnapshot.empty) {
+        const ownerDoc = ownershipSnapshot.docs[0].data();
+        if (ownerDoc.userId !== FIREBASE_AUTH.currentUser?.uid) {
+          // Disc is already owned by another user
+          Alert.alert("Sorry", "This disc has already been added to another player's bag.");
+          setScanned(true); // Set scanned to true to prevent repeated alerts
+          setShowScanner(false); // Hide the scanner
+          return;
+        } else {
+          // Disc is already in current user's inventory
+          Alert.alert("Info", "You already have this disc in your bag.");
+          setScanned(true); // Prevent repeated alerts
+          setShowScanner(false); // Hide the scanner
+          return;
+        }
+      }
+
+      // If no owner, proceed with adding the disc
       setDiscData(data);
       if (data.company === 'N/A' || data.mold === 'N/A' || data.color === 'N/A') {
         setIsNewDisc(true); // Show form if attributes are missing
@@ -54,7 +78,7 @@ const AddDisc = () => {
         setIsNewDisc(false); // Otherwise, do not show form
       }
     } else {
-      console.log("Disc not found, should not happen for predefined UIDs.");
+      console.log("Disc not found, this should not happen for predefined UIDs.");
       Alert.alert("Error", "This disc ID does not exist in the database.");
     }
 
@@ -62,8 +86,11 @@ const AddDisc = () => {
   };
 
   const handleScanQRCode = async ({ data }: { data: string }) => {
-    console.log("Scanned QR Code:", data);
-    fetchDiscData(data);
+    if (!scanned) { // Only process if not already scanned
+      console.log("Scanned QR Code:", data);
+      setScanned(true); // Set scanned to true immediately after scan to prevent duplicates
+      fetchDiscData(data);
+    }
   };
 
   const addNewDiscToInventory = async () => {
@@ -113,7 +140,6 @@ const AddDisc = () => {
       )}
 
       {discData && !isNewDisc ? (
-        // Display information if disc is found with all attributes
         <View style={styles.discInfo}>
           <Text>Disc Info:</Text>
           <Text>UID: {discData.uid}</Text>
@@ -125,7 +151,6 @@ const AddDisc = () => {
           </TouchableOpacity>
         </View>
       ) : isNewDisc ? (
-        // Display form if the disc has missing attributes (N/A)
         <View style={styles.newDiscForm}>
           <Text>This disc is missing details. Please enter the information:</Text>
           <TextInput

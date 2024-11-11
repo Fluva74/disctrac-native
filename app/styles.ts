@@ -164,4 +164,10 @@ export default StyleSheet.create({
         width: '100%',
         backgroundColor: '#e9ecef',
       },
+      infoText: {
+        fontSize: 18,
+        color: '#2E7D32',
+        fontWeight: '600',
+        // textTransform: 'uppercase',
+    },
 });

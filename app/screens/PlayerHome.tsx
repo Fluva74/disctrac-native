@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { InsideStackParamList, RootStackParamList } from '../../App';
+import { InsideStackParamList } from '../../App';
 import { signOut } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,15 +15,14 @@ const PlayerHome = () => {
         const fetchUserData = async () => {
             const user = FIREBASE_AUTH.currentUser;
             if (user) {
-                console.log("User UID:", user.uid); // Log the UID for debugging
-    
+                console.log("User UID:", user.uid);
                 try {
                     const docRef = doc(FIREBASE_DB, 'players', user.uid);
                     const docSnap = await getDoc(docRef);
-    
+
                     if (docSnap.exists()) {
                         const userData = docSnap.data();
-                        console.log("User Data from Firestore:", userData); // Log fetched data
+                        console.log("User Data from Firestore:", userData);
                         setFirstName(userData.firstName || 'Guest');
                     } else {
                         console.log('No document found for this user UID in Firestore.');
@@ -45,8 +44,6 @@ const PlayerHome = () => {
     const handleSignOut = async () => {
         try {
             await FIREBASE_AUTH.signOut();
-            
-            // Reset the root navigation stack to go to Login
             (navigation as any).reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
@@ -55,6 +52,13 @@ const PlayerHome = () => {
             console.error('Error signing out:', error);
             Alert.alert('Error', 'Failed to sign out. Please try again.');
         }
+    };
+
+    const openLink = (url: string) => {
+        Linking.openURL(url).catch((err) => {
+            console.error("Failed to open URL:", err);
+            Alert.alert("Error", "Failed to open link. Please try again.");
+        });
     };
 
     return (
@@ -66,6 +70,42 @@ const PlayerHome = () => {
                 onPress={() => navigation.navigate('Inventory')}
             >
                 <Text style={styles.buttonText}>Inventory</Text>
+            </TouchableOpacity>
+
+            {/* Links */}
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => openLink('https://www.pdga.com/tour/event/advanced')}
+            >
+                <Text style={styles.buttonText}>Upcoming Tournaments</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => openLink('https://udisc.com/courses')}
+            >
+                <Text style={styles.buttonText}>Find Nearby Courses</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => openLink('https://www.pdga.com/news')}
+            >
+                <Text style={styles.buttonText}>PDGA News</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => openLink('https://www.discstore.com/')}
+            >
+                <Text style={styles.buttonText}>Shop Disc Golf Gear</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => openLink('https://www.weather.com/')}
+            >
+                <Text style={styles.buttonText}>Weather Forecast</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
