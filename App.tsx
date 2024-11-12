@@ -12,6 +12,9 @@ import StoreCreate from './app/screens/StoreCreate';
 import PlayerHome from './app/screens/PlayerHome';
 import Inventory from './app/screens/Inventory';
 import AddDisc from './app/screens/AddDisc';
+import DiscGolfVideos from './app/screens/DiscGolfVideos';
+import ProVideos from './app/screens/ProVideos';
+import AmateurVideos from './app/screens/AmateurVideos';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH } from './FirebaseConfig';
 
@@ -21,6 +24,9 @@ export type InsideStackParamList = {
     Details: undefined;
     Inventory: undefined;
     AddDisc: undefined;
+    DiscGolfVideos: undefined; // Add this line
+    ProVideos: undefined;
+    AmateurVideos: undefined;
 };
 
 export type RootStackParamList = {
@@ -42,6 +48,9 @@ function InsideLayout() {
             <InsideStack.Screen name="Details" component={Details} />
             <InsideStack.Screen name="Inventory" component={Inventory} /> 
             <InsideStack.Screen name="AddDisc" component={AddDisc} />    
+            <InsideStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />    
+            <InsideStack.Screen name="ProVideos" component={ProVideos} />    
+            <InsideStack.Screen name="AmateurVideos" component={AmateurVideos} />    
         </InsideStack.Navigator>
     );
 }

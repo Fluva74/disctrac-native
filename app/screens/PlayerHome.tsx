@@ -71,6 +71,10 @@ const PlayerHome = () => {
             >
                 <Text style={styles.buttonText}>Inventory</Text>
             </TouchableOpacity>
+             {/* New "Videos" button */}
+             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('DiscGolfVideos')}>
+                <Text style={styles.buttonText}>Videos</Text>
+            </TouchableOpacity>
 
             {/* Links */}
             <TouchableOpacity

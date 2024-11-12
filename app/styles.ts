@@ -182,4 +182,48 @@ export default StyleSheet.create({
         color: '#007AFF',
         textDecorationLine: 'underline',
     },
+    scrollContainer: {
+        paddingBottom: 20,
+    },
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-around',
+        padding: 10,
+    },
+    gridItem: {
+        width: '45%', // Wider items that fit two per row
+        marginVertical: 10, // Space between rows
+        backgroundColor: '#4CAF50',
+        paddingVertical: 20, // More padding for better appearance
+        borderRadius: 15, // Rounded corners
+        alignItems: 'center',
+        elevation: 3, // Add shadow on Android
+        shadowColor: '#000', // Add shadow on iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
+    gridItemText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    headerVid: {
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#2E7D32', // Bold green for sports/outdoors
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+    },
+    containerVid: {
+        flex: 1,
+        backgroundColor: '#f0f4f8', // Soft light background
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 1,
+
+    }
 });
