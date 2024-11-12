@@ -170,4 +170,16 @@ export default StyleSheet.create({
         fontWeight: '600',
         // textTransform: 'uppercase',
     },
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+    actionButton: {
+        marginHorizontal: 5,
+    },
+    watchReviewsText: {
+        color: '#007AFF',
+        textDecorationLine: 'underline',
+    },
 });

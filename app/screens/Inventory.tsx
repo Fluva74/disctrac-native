@@ -1,17 +1,18 @@
+// Inventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, Linking } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
-import Icon from 'react-native-vector-icons/FontAwesome'; // Import FontAwesome icon set
-import { FontAwesome } from '@expo/vector-icons'; // Import FontAwesome icon set
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { FontAwesome } from '@expo/vector-icons';
 import styles from '../styles';
 
 const Inventory = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
     const [discs, setDiscs] = useState<any[]>([]);
-    const [selectedDiscId, setSelectedDiscId] = useState<string | null>(null); // Track selected disc
+    const [selectedDiscId, setSelectedDiscId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchDiscs = async (userId: string) => {
@@ -26,7 +27,7 @@ const Inventory = () => {
                 ...doc.data()
             }));
 
-            setDiscs(discsList); // Update discs state to display on the page
+            setDiscs(discsList);
         } catch (error) {
             console.error('Error fetching discs:', error);
             Alert.alert('Error', 'Could not load inventory.');
@@ -45,7 +46,7 @@ const Inventory = () => {
     );
 
     const handleSelectDisc = (discId: string) => {
-        setSelectedDiscId(discId === selectedDiscId ? null : discId); // Toggle selection
+        setSelectedDiscId(discId === selectedDiscId ? null : discId);
     };
 
     const handleDeleteDisc = async (discId: string) => {
@@ -62,7 +63,7 @@ const Inventory = () => {
                     onPress: async () => {
                         try {
                             await deleteDoc(doc(FIREBASE_DB, "userDiscs", discId));
-                            setDiscs((prevDiscs) => prevDiscs.filter((disc) => disc.id !== discId)); // Remove disc from state
+                            setDiscs((prevDiscs) => prevDiscs.filter((disc) => disc.id !== discId));
                             setSelectedDiscId(null);
                         } catch (error) {
                             console.error("Error deleting disc:", error);
@@ -72,6 +73,12 @@ const Inventory = () => {
                 },
             ]
         );
+    };
+
+    const handleWatchReviews = (company: string, mold: string) => {
+        const searchQuery = `disc golf disc review: ${company} ${mold}`;
+        const youtubeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`;
+        Linking.openURL(youtubeUrl);
     };
 
     const renderDisc = ({ item }: { item: any }) => {
@@ -84,10 +91,16 @@ const Inventory = () => {
                 <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.mold}</Text>
                 <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.company}</Text>
                 <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.color}</Text>
+                
                 {isSelected && (
-                     <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                     <FontAwesome name="trash" size={20} style={styles.trashIcon} />
-                 </TouchableOpacity>
+                    <View style={styles.actionsContainer}>
+                        <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={styles.actionButton}>
+                            <FontAwesome name="trash" size={20} style={styles.trashIcon} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleWatchReviews(item.company, item.mold)} style={styles.actionButton}>
+                            <Text style={styles.watchReviewsText}>Watch Disc Reviews</Text>
+                        </TouchableOpacity>
+                    </View>
                 )}
             </TouchableOpacity>
         );

@@ -1,5 +1,6 @@
+// App.tsx
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './app/screens/Login';
@@ -35,17 +36,13 @@ const InsideStack = createNativeStackNavigator<InsideStackParamList>();
 
 function InsideLayout() {
     return (
-
-        <SafeAreaView style={styles.safeArea}>
-            <InsideStack.Navigator initialRouteName="PlayerHome">
-
-                <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
-                <InsideStack.Screen name="List" component={List} />
-                <InsideStack.Screen name="Details" component={Details} />
-                <InsideStack.Screen name="Inventory" component={Inventory} /> 
-                <InsideStack.Screen name="AddDisc" component={AddDisc} />    
-            </InsideStack.Navigator>
-        </SafeAreaView>
+        <InsideStack.Navigator initialRouteName="PlayerHome" screenOptions={{ headerShown: false }}>
+            <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
+            <InsideStack.Screen name="List" component={List} />
+            <InsideStack.Screen name="Details" component={Details} />
+            <InsideStack.Screen name="Inventory" component={Inventory} /> 
+            <InsideStack.Screen name="AddDisc" component={AddDisc} />    
+        </InsideStack.Navigator>
     );
 }
 
@@ -60,20 +57,18 @@ export default function App() {
 
     return (
         <NavigationContainer>
-            <SafeAreaView style={styles.safeArea}>
-                <Stack.Navigator initialRouteName="Login">
-                    {user ? (
-                        <Stack.Screen name="Inside" component={InsideLayout} options={{ headerShown: false }} />
-                    ) : (
-                        <>
-                            <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
-                            <Stack.Screen name="AccountSelection" component={AccountSelection} />
-                            <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
-                            <Stack.Screen name="StoreCreate" component={StoreCreate} />
-                        </>
-                    )}
-                </Stack.Navigator>
-            </SafeAreaView>
+            <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+                {user ? (
+                    <Stack.Screen name="Inside" component={InsideLayout} />
+                ) : (
+                    <>
+                        <Stack.Screen name="Login" component={Login} />
+                        <Stack.Screen name="AccountSelection" component={AccountSelection} />
+                        <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
+                        <Stack.Screen name="StoreCreate" component={StoreCreate} />
+                    </>
+                )}
+            </Stack.Navigator>
         </NavigationContainer>
     );
 }
@@ -84,6 +79,3 @@ const styles = StyleSheet.create({
         backgroundColor: '#f0f4f8', // Global background color
     },
 });
-
-
-
