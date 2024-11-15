@@ -10,6 +10,7 @@ import StoreCreate from './app/screens/StoreCreate';
 import PlayerHome from './app/screens/PlayerHome';
 import StoreHome from './app/screens/StoreHome';
 import Inventory from './app/screens/Inventory';
+import StoreInventory from './app/screens/StoreInventory';
 import AddDisc from './app/screens/AddDisc';
 import DiscGolfVideos from './app/screens/DiscGolfVideos';
 import ProVideos from './app/screens/ProVideos';
@@ -17,6 +18,7 @@ import AmateurVideos from './app/screens/AmateurVideos';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from './FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
+
 
 export type RootStackParamList = {
     Login: undefined;
@@ -31,6 +33,7 @@ export type InsideStackParamList = {
     PlayerHome: undefined;
     StoreHome: undefined;
     Inventory: undefined;
+    StoreInventory: undefined;
     AddDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
@@ -92,6 +95,7 @@ const InsideLayout = ({ initialRoute }: { initialRoute: keyof InsideStackParamLi
             <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
             <InsideStack.Screen name="StoreHome" component={StoreHome} />
             <InsideStack.Screen name="Inventory" component={Inventory} />
+            <InsideStack.Screen name="StoreInventory" component={StoreInventory} />
             <InsideStack.Screen name="AddDisc" component={AddDisc} />
             <InsideStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
             <InsideStack.Screen name="ProVideos" component={ProVideos} />
