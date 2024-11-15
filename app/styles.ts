@@ -1,38 +1,59 @@
+// styles.ts
 import { StyleSheet, Platform } from 'react-native';
 
 export default StyleSheet.create({
+    // General container
     container: {
         flex: 1,
-        backgroundColor: '#f0f4f8', // Soft light background
+        backgroundColor: '#f0f4f8', // Light background
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 20,
     },
+    // Form input fields
     input: {
         height: 50,
         width: '90%',
         marginVertical: 10,
         borderWidth: 1,
-        borderColor: '#4CAF50', // Green color for an outdoor feel
+        borderColor: '#4CAF50',
         backgroundColor: '#ffffff',
-        borderRadius: 10, // Rounded corners for a polished look
+        borderRadius: 10,
         paddingHorizontal: 15,
         fontSize: 16,
         color: '#333',
     },
+    // Headers for titles
     loginHeader: {
         fontSize: 36,
         fontWeight: 'bold',
-        color: '#2E7D32', // Bold green for sports/outdoors
+        color: '#2E7D32',
         marginBottom: 20,
         textTransform: 'uppercase',
-        letterSpacing: 2, // Space out letters for a modern look
+        letterSpacing: 2,
     },
+    header: {
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#2E7D32',
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+    },
+    headerVid: {
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#2E7D32',
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+    },
+    // Buttons
     button: {
-        backgroundColor: '#388E3C', // Darker green for strong visibility
+        backgroundColor: '#388E3C',
         paddingVertical: 12,
         paddingHorizontal: 20,
-        borderRadius: 25, // Rounded button for a sleek look
+        borderRadius: 25,
         width: '90%',
         alignItems: 'center',
         marginVertical: 10,
@@ -43,42 +64,43 @@ export default StyleSheet.create({
         fontWeight: '600',
         textTransform: 'uppercase',
     },
+    homeButton: {
+        backgroundColor: '#1976D2',
+        marginTop: 10,
+    },
+    cancelButton: {
+        backgroundColor: '#d9534f',
+        marginTop: 20,
+    },
+    // Loading indicator
     loadingIndicator: {
         marginVertical: 20,
     },
+    // Text styles
     welcomeText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#4CAF50', // Use your brand's primary color
+        color: '#4CAF50',
         marginBottom: 20,
         textAlign: 'center',
     },
-    linkButton: {
-        backgroundColor: '#4CAF50', // Use your brand's primary color
-        padding: 15,
-        borderRadius: 5,
-        width: '80%',
-        alignItems: 'center',
-        marginVertical: 10,
+    infoText: {
+        fontSize: 18,
+        color: '#2E7D32',
+        fontWeight: '600',
     },
     linkText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
     },
-    discInfo: {
+    noDiscsText: {
+        fontSize: 18,
+        color: '#888',
         marginVertical: 20,
-        alignItems: 'center',
+        textAlign: 'center',
     },
-    discText: {
-        fontSize: 16,
-        color: '#333',
-        marginBottom: 10,
-    },
-    cancelButton: {
-        backgroundColor: '#d9534f', // Red color for cancel
-        marginTop: 20,
-    },
+    // Table and row styling
     table: {
         width: '100%',
         paddingHorizontal: 20,
@@ -103,57 +125,58 @@ export default StyleSheet.create({
         color: '#333',
         textAlign: 'center',
     },
-    noDiscsText: {
-        fontSize: 18,
-        color: '#888',
-        marginVertical: 20,
-        textAlign: 'center',
-    },
     selectedRow: {
-        backgroundColor: '#388E3C', // Replace with your branded green color
+        backgroundColor: '#388E3C',
     },
     selectedRowText: {
-        color: '#ffffff', // White text for selected row
+        color: '#ffffff',
     },
-    trashText: {
-        color: 'white',
-        marginLeft: 10,
-    },
+    // Picker styling for dropdowns
     picker: {
         height: 50,
         width: '100%',
         color: '#333',
-
-    },
-    label: {
-        fontSize: 16,
-        marginBottom: 5,
     },
     pickerContainer: {
         borderWidth: 1,
         borderColor: '#4CAF50',
         borderRadius: 10,
-        // marginBottom: 15,
         width: '90%',
-        paddingVertical: Platform.OS === 'ios' ? 12 : 0, // Padding to help display the picker
+        paddingVertical: Platform.OS === 'ios' ? 12 : 0,
         backgroundColor: '#ffffff',
         marginVertical: 10,
         color: '#333',
-
+    },
+    // Specific to disc actions in Inventory
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+    actionButton: {
+        marginHorizontal: 5,
     },
     trashIcon: {
         marginRight: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: 'white'
+        color: 'white',
     },
-    header:{
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: '#2E7D32', // Bold green for sports/outdoors
-        marginBottom: 20,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
+    trashText: {
+        color: 'white',
+        marginLeft: 10,
+    },
+    watchReviewsText: {
+        color: '#007AFF',
+        textDecorationLine: 'underline',
+    },
+    // Disc info for AddDisc
+    discInfo: {
+        marginVertical: 20,
+        alignItems: 'center',
+    },
+    discText: {
+        fontSize: 16,
+        color: '#333',
+        marginBottom: 10,
     },
     newDiscForm: {
         marginVertical: 20,
@@ -163,28 +186,8 @@ export default StyleSheet.create({
         borderRadius: 5,
         width: '100%',
         backgroundColor: '#e9ecef',
-      },
-      infoText: {
-        fontSize: 18,
-        color: '#2E7D32',
-        fontWeight: '600',
-        // textTransform: 'uppercase',
     },
-    actionsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginLeft: 10,
-    },
-    actionButton: {
-        marginHorizontal: 5,
-    },
-    watchReviewsText: {
-        color: '#007AFF',
-        textDecorationLine: 'underline',
-    },
-    scrollContainer: {
-        paddingBottom: 20,
-    },
+    // Grid styles for video links in AmateurVideos and ProVideos
     gridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -192,14 +195,14 @@ export default StyleSheet.create({
         padding: 10,
     },
     gridItem: {
-        width: '45%', // Wider items that fit two per row
-        marginVertical: 10, // Space between rows
+        width: '45%',
+        marginVertical: 10,
         backgroundColor: '#4CAF50',
-        paddingVertical: 20, // More padding for better appearance
-        borderRadius: 15, // Rounded corners
+        paddingVertical: 20,
+        borderRadius: 15,
         alignItems: 'center',
-        elevation: 3, // Add shadow on Android
-        shadowColor: '#000', // Add shadow on iOS
+        elevation: 3,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 3,
@@ -210,20 +213,36 @@ export default StyleSheet.create({
         fontWeight: 'bold',
         textAlign: 'center',
     },
-    headerVid: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: '#2E7D32', // Bold green for sports/outdoors
-        marginBottom: 20,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
     containerVid: {
         flex: 1,
-        backgroundColor: '#f0f4f8', // Soft light background
+        backgroundColor: '#f0f4f8',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 1,
-
-    }
+    },
+    // Pagination for VideoGrid
+    pagination: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 10,
+    },
+    navButton: {
+        padding: 10,
+        backgroundColor: '#4CAF50',
+        borderRadius: 10,
+    },
+    navText: {
+        color: '#ffffff',
+    },
+    disabledButton: {
+        backgroundColor: '#cccccc',
+    },
+    // Button container for multiple buttons in one row
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        paddingHorizontal: 20,
+        marginTop: 20,
+    },
 });

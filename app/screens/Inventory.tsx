@@ -81,6 +81,10 @@ const Inventory = () => {
         Linking.openURL(youtubeUrl);
     };
 
+    const navigateToHome = () => {
+        navigation.navigate('PlayerHome');
+    };
+
     const renderDisc = ({ item }: { item: any }) => {
         const isSelected = item.id === selectedDiscId;
         return (
@@ -127,6 +131,10 @@ const Inventory = () => {
                         renderItem={renderDisc}
                         keyExtractor={(item) => item.id}
                     />
+                     {/* Home Button */}
+            <TouchableOpacity style={styles.button} onPress={navigateToHome}>
+                <Text style={styles.buttonText}>Home</Text>
+            </TouchableOpacity>
                 </View>
             )}
 

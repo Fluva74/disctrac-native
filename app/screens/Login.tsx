@@ -1,8 +1,10 @@
-import { View, TextInput, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+// Login.tsx
 import React, { useState } from 'react';
-import { FIREBASE_AUTH } from '../../FirebaseConfig';
+import { View, TextInput, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { doc, getDoc } from 'firebase/firestore';
+import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { RootStackParamList } from '../../App';
 import styles from '../styles';
 
@@ -11,17 +13,28 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-    const auth = FIREBASE_AUTH;
 
     const signIn = async () => {
         setLoading(true);
         try {
-            const response = await signInWithEmailAndPassword(auth, email, password);
-            console.log(response);
-            // alert('Check your emails!');
+            const response = await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
+            const user = response.user;
+
+            // Check user role
+            let userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
+            if (userDoc.exists()) {
+                navigation.navigate('Inside', { screen: 'PlayerHome' });
+            } else {
+                userDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
+                if (userDoc.exists()) {
+                    navigation.navigate('Inside', { screen: 'StoreHome' });
+                } else {
+                    alert('User data not found.');
+                }
+            }
         } catch (error: any) {
-            console.log(error);
             alert('Sign In failed: ' + error.message);
+            console.error("Error during sign-in:", error);
         } finally {
             setLoading(false);
         }
@@ -33,10 +46,8 @@ const Login = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header text wrapped in <Text> */}
             <Text style={styles.loginHeader}>disctrac</Text> 
-            
-            {/* Email input */}
+
             <TextInput
                 value={email}
                 style={styles.input}
@@ -45,7 +56,6 @@ const Login = () => {
                 onChangeText={(text) => setEmail(text)}
             />
 
-            {/* Password input */}
             <TextInput
                 secureTextEntry
                 value={password}
@@ -59,7 +69,6 @@ const Login = () => {
                 <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
             ) : (
                 <>
-                    {/* Replaced Button with TouchableOpacity and added <Text> inside */}
                     <TouchableOpacity style={styles.button} onPress={signIn}>
                         <Text style={styles.buttonText}>Login</Text>
                     </TouchableOpacity>

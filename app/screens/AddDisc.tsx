@@ -1,3 +1,4 @@
+//AddDisc.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';

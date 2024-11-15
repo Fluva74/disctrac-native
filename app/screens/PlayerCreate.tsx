@@ -1,8 +1,9 @@
+// PlayerCreate.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App'; 
 import styles from '../styles';
@@ -16,9 +17,9 @@ const PlayerCreate = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [phone, setPhone] = useState('');
     const [city, setCity] = useState('');
-    const [state, setState] = useState(''); // Updated state value from Picker
+    const [state, setState] = useState('');
     const [pdga, setPdga] = useState('');
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>(); // Typed navigation
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     const states = [
         'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -42,7 +43,7 @@ const PlayerCreate = () => {
             const userCredential = await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
             const user = userCredential.user;
 
-            await addDoc(collection(FIREBASE_DB, 'players'), {
+            await setDoc(doc(FIREBASE_DB, 'players', user.uid), {
                 uid: user.uid,
                 firstName,
                 lastName,
@@ -50,7 +51,8 @@ const PlayerCreate = () => {
                 phone,
                 city,
                 state,
-                pdga
+                pdga,
+                role: 'player'
             });
 
             navigation.navigate('Inside', { screen: 'PlayerHome' });
@@ -112,15 +114,10 @@ const PlayerCreate = () => {
                 value={city}
                 onChangeText={setCity}
             />
-
-            {/* <Text style={styles.label}>State (Required)</Text> */}
             <View style={styles.pickerContainer}>
                 <Picker
                     selectedValue={state}
-                    onValueChange={(itemValue) => {
-                        setState(itemValue);
-                        console.log("Selected State:", itemValue); // Log the selected state for debugging
-                    }}
+                    onValueChange={(itemValue) => setState(itemValue)}
                     style={styles.picker}
                 >
                     <Picker.Item label="Select your state" value="" />
