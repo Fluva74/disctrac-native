@@ -1,3 +1,4 @@
+// PlayerHome.tsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -71,8 +72,9 @@ const PlayerHome = () => {
             >
                 <Text style={styles.buttonText}>Inventory</Text>
             </TouchableOpacity>
-             {/* New "Videos" button */}
-             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('DiscGolfVideos')}>
+            
+            {/* Directly navigate to DiscGolfVideos */}
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('DiscGolfVideos')}>
                 <Text style={styles.buttonText}>Videos</Text>
             </TouchableOpacity>
 

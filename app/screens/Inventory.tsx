@@ -1,11 +1,10 @@
 // Inventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
-import Icon from 'react-native-vector-icons/FontAwesome';
 import { FontAwesome } from '@expo/vector-icons';
 import styles from '../styles';
 
@@ -54,10 +53,7 @@ const Inventory = () => {
             "Remove Disc",
             "Do you want to remove this disc from your inventory?",
             [
-                {
-                    text: "Cancel",
-                    style: "cancel",
-                },
+                { text: "Cancel", style: "cancel" },
                 {
                     text: "Yes",
                     onPress: async () => {
@@ -115,7 +111,7 @@ const Inventory = () => {
             <Text style={styles.welcomeText}>Inventory</Text>
 
             {loading ? (
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
             ) : discs.length === 0 ? (
                 <Text style={styles.noDiscsText}>You have no discs in your bag.</Text>
             ) : (
@@ -131,19 +127,17 @@ const Inventory = () => {
                         renderItem={renderDisc}
                         keyExtractor={(item) => item.id}
                     />
-                     {/* Home Button */}
-            <TouchableOpacity style={styles.button} onPress={navigateToHome}>
-                <Text style={styles.buttonText}>Home</Text>
-            </TouchableOpacity>
                 </View>
             )}
 
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate('AddDisc')}
-            >
-                <Text style={styles.buttonText}>Add Disc</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity style={[styles.button, styles.homeButton]} onPress={navigateToHome}>
+                    <Text style={styles.buttonText}>Home</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('AddDisc')}>
+                    <Text style={styles.buttonText}>Add Disc</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
