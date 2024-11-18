@@ -5,7 +5,7 @@ import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner';
 import styles from '../styles';
 
 interface DiscData {
@@ -129,7 +129,7 @@ const AddDisc = () => {
     <View style={styles.container}>
       <Text style={styles.loginHeader}>Add Disc</Text>
 
-      {showScanner ? (
+      {/* {showScanner ? (
         <BarCodeScanner
           onBarCodeScanned={handleScanQRCode}
           style={{ width: '100%', height: 300 }}
@@ -138,7 +138,7 @@ const AddDisc = () => {
         <TouchableOpacity style={styles.button} onPress={initiateScan}>
           <Text style={styles.buttonText}>Scan QR Code</Text>
         </TouchableOpacity>
-      )}
+      )} */}
 
       {discData && !isNewDisc ? (
         <View style={styles.discInfo}>

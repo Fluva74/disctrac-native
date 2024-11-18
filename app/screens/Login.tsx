@@ -66,7 +66,7 @@ const Login = () => {
             />
 
             {loading ? (
-                <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
+                <ActivityIndicator size={40} color="#4CAF50" style={styles.loadingIndicator} />
             ) : (
                 <>
                     <TouchableOpacity style={styles.button} onPress={signIn}>

@@ -4,7 +4,7 @@ import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation
 import { FIREBASE_DB } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+// import { BarCodeScanner } from 'expo-barcode-scanner';
 import styles from '../styles';
 
 interface DiscData {
@@ -161,12 +161,12 @@ const StoreInventory = () => {
                 <Text style={styles.buttonText}>Scan QR Code</Text>
             </TouchableOpacity>
 
-            {showScanner && (
+            {/* {showScanner && (
                 <BarCodeScanner
                     onBarCodeScanned={handleScanQRCode}
                     style={{ width: '100%', height: 300 }}
                 />
-            )}
+            )} */}
 
             {discData && isNewDisc && (
                 <View style={styles.newDiscForm}>

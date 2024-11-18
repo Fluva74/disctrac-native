@@ -95,7 +95,7 @@ const Inventory = () => {
                 {isSelected && (
                     <View style={styles.actionsContainer}>
                         <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={styles.actionButton}>
-                            <FontAwesome name="trash" size={20} style={styles.trashIcon} />
+                        <FontAwesome name="trash" size={20} style={styles.trashIcon} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleWatchReviews(item.company, item.mold)} style={styles.actionButton}>
                             <Text style={styles.watchReviewsText}>Watch Disc Reviews</Text>
@@ -111,7 +111,7 @@ const Inventory = () => {
             <Text style={styles.welcomeText}>Inventory</Text>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator} />
+                <ActivityIndicator size={40} color="#4CAF50" style={styles.loadingIndicator} />
             ) : discs.length === 0 ? (
                 <Text style={styles.noDiscsText}>You have no discs in your bag.</Text>
             ) : (

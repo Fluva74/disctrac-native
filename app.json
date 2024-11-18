@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "disctrac",
     "slug": "disctrac",
     "version": "1.0.0",
