@@ -1,12 +1,12 @@
 {
+  "newArchEnabled": true,
   "expo": {
-    "newArchEnabled": true,
     "name": "disctrac",
     "slug": "disctrac",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "assetBundlePatterns": [],
+    "assetBundlePatterns": ["**/*"],
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -14,17 +14,31 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fluvatech.disctrac"
+      "bundleIdentifier": "com.fluvatech.disctrac",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to the camera to scan barcodes."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": ["CAMERA"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "78b9cd6e-db6a-43ee-929b-7700fb060420"

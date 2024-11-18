@@ -1,191 +1,231 @@
-//AddDisc.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+// AddDisc.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, Alert, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
-// import { BarCodeScanner } from 'expo-barcode-scanner';
-import styles from '../styles';
-
-interface DiscData {
-  uid: string;
-  company: string;
-  mold: string;
-  color: string;
-}
-
-interface NewDiscData {
-  company: string;
-  mold: string;
-  color: string;
-}
 
 const AddDisc = () => {
-  const [discData, setDiscData] = useState<DiscData | null>(null);
-  const [newDisc, setNewDisc] = useState<NewDiscData>({ company: '', mold: '', color: '' });
-  const [showScanner, setShowScanner] = useState(false);
-  const [isNewDisc, setIsNewDisc] = useState(false);
-  const [scanned, setScanned] = useState(false); // New state to prevent multiple alerts
+  const [hasPermission, requestPermission] = useCameraPermissions();
+  const [scannedData, setScannedData] = useState<string | null>(null);
+  const [discData, setDiscData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
 
-  const initiateScan = () => {
-    // Reset all states before starting a new scan
-    setDiscData(null);
-    setNewDisc({ company: '', mold: '', color: '' });
-    setIsNewDisc(false);
-    setScanned(false); // Reset scanned state
-    setShowScanner(true);
-  };
+  const [company, setCompany] = useState('');
+  const [mold, setMold] = useState('');
+  const [color, setColor] = useState('');
 
-  const fetchDiscData = async (scannedCode: string) => {
-    console.log("Fetching disc data for scannedCode:", scannedCode);
-    const discsRef = collection(FIREBASE_DB, 'discmain');
-    const q = query(discsRef, where('uid', '==', scannedCode));
-    const querySnapshot = await getDocs(q);
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission]);
 
-    if (!querySnapshot.empty) {
-      const docSnap = querySnapshot.docs[0];
-      const data = docSnap.data() as DiscData;
-      console.log("Disc found in database:", data);
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (data !== scannedData) {
+      setScannedData(data);
+      setLoading(true);
 
-      // Check if this disc is already in another player's inventory
-      const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
-      const ownershipQuery = query(userDiscsRef, where('uid', '==', scannedCode));
-      const ownershipSnapshot = await getDocs(ownershipQuery);
+      try {
+        const discRef = doc(FIREBASE_DB, 'discmain', data);
+        const discSnapshot = await getDoc(discRef);
 
-      if (!ownershipSnapshot.empty) {
-        const ownerDoc = ownershipSnapshot.docs[0].data();
-        if (ownerDoc.userId !== FIREBASE_AUTH.currentUser?.uid) {
-          // Disc is already owned by another user
-          Alert.alert("Sorry", "This disc has already been added to another player's bag.");
-          setScanned(true); // Set scanned to true to prevent repeated alerts
-          setShowScanner(false); // Hide the scanner
-          return;
+        if (discSnapshot.exists()) {
+          const disc = discSnapshot.data();
+          setDiscData(disc);
+          setCompany(disc.company !== 'N/A' ? disc.company : '');
+          setMold(disc.mold !== 'N/A' ? disc.mold : '');
+          setColor(disc.color !== 'N/A' ? disc.color : '');
+
+          if (disc.company === 'N/A' || disc.mold === 'N/A' || disc.color === 'N/A') {
+            Alert.alert("Incomplete Disc Data", "Please complete the disc details.");
+          } else {
+            Alert.alert("Disc Found", "The disc is already complete.");
+          }
         } else {
-          // Disc is already in current user's inventory
-          Alert.alert("Info", "You already have this disc in your bag.");
-          setScanned(true); // Prevent repeated alerts
-          setShowScanner(false); // Hide the scanner
-          return;
+          Alert.alert("Disc Not Found", "No disc information found for this ID.");
         }
+      } catch (error) {
+        console.error("Error fetching disc data:", error);
+        Alert.alert("Error", "Failed to fetch disc information.");
+      } finally {
+        setLoading(false);
       }
-
-      // If no owner, proceed with adding the disc
-      setDiscData(data);
-      if (data.company === 'N/A' || data.mold === 'N/A' || data.color === 'N/A') {
-        setIsNewDisc(true); // Show form if attributes are missing
-      } else {
-        setIsNewDisc(false); // Otherwise, do not show form
-      }
-    } else {
-      console.log("Disc not found, this should not happen for predefined UIDs.");
-      Alert.alert("Error", "This disc ID does not exist in the database.");
-    }
-
-    setShowScanner(false); // Hide scanner after scan
-  };
-
-  const handleScanQRCode = async ({ data }: { data: string }) => {
-    if (!scanned) { // Only process if not already scanned
-      console.log("Scanned QR Code:", data);
-      setScanned(true); // Set scanned to true immediately after scan to prevent duplicates
-      fetchDiscData(data);
     }
   };
 
-  const addNewDiscToInventory = async () => {
-    if (!newDisc.company || !newDisc.mold || !newDisc.color) {
-      Alert.alert("Please fill out all fields.");
+  const handleSaveDisc = async () => {
+    if (!company || !mold || !color) {
+      Alert.alert("Error", "Please fill out all fields.");
       return;
     }
+
     try {
-      console.log("Adding new disc data:", newDisc);
-
-      // Update the existing disc in 'discmain' collection
-      const discDocRef = doc(FIREBASE_DB, 'discmain', discData!.uid);
-      await updateDoc(discDocRef, {
-        company: newDisc.company,
-        mold: newDisc.mold,
-        color: newDisc.color
+      const discRef = doc(FIREBASE_DB, 'discmain', scannedData!);
+      await updateDoc(discRef, {
+        company,
+        mold,
+        color
       });
 
-      // Add the disc to user's inventory
-      await addDoc(collection(FIREBASE_DB, 'userDiscs'), {
-        userId: FIREBASE_AUTH.currentUser?.uid,
-        uid: discData?.uid,
-        ...newDisc
-      });
+      const user = FIREBASE_AUTH.currentUser;
+      if (user) {
+        const userDiscRef = doc(FIREBASE_DB, 'userDiscs', `${user.uid}_${scannedData}`);
+        await setDoc(userDiscRef, {
+          uid: scannedData,
+          userId: user.uid,
+          company,
+          mold,
+          color,
+        });
 
-      Alert.alert("Success", "Disc added to your inventory.");
-      navigation.navigate("Inventory");
+        Alert.alert("Success", "Disc added to your inventory.");
+
+        // Navigate back to the Inventory screen after successful save
+        navigation.navigate('Inventory');
+      } else {
+        Alert.alert("Error", "No user is logged in.");
+      }
     } catch (error) {
-      console.error("Error adding disc to inventory:", error);
-      Alert.alert("Error", "Failed to add disc to inventory.");
+      console.error("Error saving disc data:", error);
+      Alert.alert("Error", "Failed to save disc information.");
     }
   };
+
+  if (!hasPermission) {
+    return <View />;
+  }
+
+  if (!hasPermission.granted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Text>We need your permission to access the camera</Text>
+        <Button title="Grant Permission" onPress={requestPermission} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.loginHeader}>Add Disc</Text>
+      <Text style={styles.title}>Add Disc - Barcode Scanner</Text>
 
-      {/* {showScanner ? (
-        <BarCodeScanner
-          onBarCodeScanned={handleScanQRCode}
-          style={{ width: '100%', height: 300 }}
-        />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={initiateScan}>
-          <Text style={styles.buttonText}>Scan QR Code</Text>
-        </TouchableOpacity>
-      )} */}
-
-      {discData && !isNewDisc ? (
-        <View style={styles.discInfo}>
-          <Text>Disc Info:</Text>
-          <Text>UID: {discData.uid}</Text>
-          <Text>Company: {discData.company}</Text>
-          <Text>Mold: {discData.mold}</Text>
-          <Text>Color: {discData.color}</Text>
-          <TouchableOpacity style={styles.button} onPress={addNewDiscToInventory}>
-            <Text style={styles.buttonText}>Add This Disc</Text>
-          </TouchableOpacity>
+      {!scannedData && (
+        <View style={styles.cameraContainer}>
+          <CameraView
+            style={styles.camera}
+            onBarcodeScanned={handleBarcodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'code128'] }}
+          />
         </View>
-      ) : isNewDisc ? (
-        <View style={styles.newDiscForm}>
-          <Text>This disc is missing details. Please enter the information:</Text>
-          <TextInput
-            placeholder="Company"
-            style={styles.input}
-            value={newDisc.company}
-            onChangeText={(text) => setNewDisc({ ...newDisc, company: text })}
-          />
-          <TextInput
-            placeholder="Mold"
-            style={styles.input}
-            value={newDisc.mold}
-            onChangeText={(text) => setNewDisc({ ...newDisc, mold: text })}
-          />
-          <TextInput
-            placeholder="Color"
-            style={styles.input}
-            value={newDisc.color}
-            onChangeText={(text) => setNewDisc({ ...newDisc, color: text })}
-          />
-          <TouchableOpacity style={styles.button} onPress={addNewDiscToInventory}>
-            <Text style={styles.buttonText}>Add This Disc</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
+      )}
 
-      <TouchableOpacity
-        style={[styles.button, styles.cancelButton]}
-        onPress={() => navigation.navigate("Inventory")}
-      >
-        <Text style={styles.buttonText}>Cancel</Text>
-      </TouchableOpacity>
+      {scannedData && (
+        <View style={styles.formContainer}>
+          <Text style={styles.formTitle}>Edit Disc Information</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#4CAF50" />
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Company"
+                value={company}
+                onChangeText={setCompany}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Mold"
+                value={mold}
+                onChangeText={setMold}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Color"
+                value={color}
+                onChangeText={setColor}
+              />
+              <TouchableOpacity style={styles.button} onPress={handleSaveDisc}>
+                <Text style={styles.buttonText}>Save Disc</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  cameraContainer: {
+    width: 250,
+    height: 250,
+    overflow: 'hidden',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'gray',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  camera: {
+    width: '100%',
+    height: '100%',
+  },
+  formContainer: {
+    marginTop: 20,
+    width: '80%',
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#FFF',
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  scannedText: {
+    fontSize: 18,
+    color: 'black',
+    padding: 10,
+    backgroundColor: 'lightgray',
+    position: 'absolute',
+    bottom: 20,
+  },
+});
 
 export default AddDisc;

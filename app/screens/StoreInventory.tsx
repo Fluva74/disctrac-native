@@ -1,3 +1,4 @@
+//StoreInventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert, TextInput } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
