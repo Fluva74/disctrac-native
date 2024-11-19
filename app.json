@@ -1,5 +1,4 @@
 {
-  "newArchEnabled": true,
   "expo": {
     "name": "disctrac",
     "slug": "disctrac",
@@ -43,6 +42,7 @@
       "eas": {
         "projectId": "78b9cd6e-db6a-43ee-929b-7700fb060420"
       }
-    }
+    },
+    "newArchEnabled": true
   }
 }
