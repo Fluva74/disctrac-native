@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Alert, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, Alert, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { doc, getDoc, updateDoc, setDoc, collection, getDocs, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
-import { AutocompleteDropdown } from 'react-native-autocomplete-dropdown';
 
 const AddDisc = () => {
   const [hasPermission, requestPermission] = useCameraPermissions();
@@ -16,11 +15,13 @@ const AddDisc = () => {
   const [company, setCompany] = useState('');
   const [mold, setMold] = useState('');
   const [color, setColor] = useState('');
+  const [currentStep, setCurrentStep] = useState('mold'); // Steps: 'mold', 'company', 'color', 'review'
+  const [showSubmitButton, setShowSubmitButton] = useState(false);
+  const [showAddCompanyButton, setShowAddCompanyButton] = useState(false);
 
   const [moldSuggestions, setMoldSuggestions] = useState<{ id: string; title: string; company?: string }[]>([]);
+  const [companySuggestions, setCompanySuggestions] = useState<{ id: string; title: string }[]>([]);
   const [availableColors, setAvailableColors] = useState<{ id: string; name: string }[]>([]);
-
-  const [step, setStep] = useState(1);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -30,21 +31,44 @@ const AddDisc = () => {
   }, [hasPermission]);
 
   const fetchMolds = useCallback(async (text: string) => {
-    if (text.length < 2) return setMoldSuggestions([]);
+    if (text.length < 2) {
+      setMoldSuggestions([]);
+      setShowSubmitButton(false);
+      return;
+    }
 
     const lowerText = text.toLowerCase();
-
     const querySnapshot = await getDocs(collection(FIREBASE_DB, 'molds'));
 
     const filteredMolds = querySnapshot.docs
-      .map((doc: QueryDocumentSnapshot<DocumentData>) => ({
+      .map((doc) => ({
         id: doc.id,
         title: doc.data().name,
-        company: doc.data().company,
+        company: doc.data().company, // Get company name for each mold
       }))
       .filter((item) => item.title.toLowerCase().startsWith(lowerText));
 
     setMoldSuggestions(filteredMolds);
+    setShowSubmitButton(filteredMolds.length === 0); // Show CTA only if no suggestions match
+  }, []);
+
+  const fetchCompanies = useCallback(async (text: string) => {
+    if (text.length < 2) {
+      setCompanySuggestions([]);
+      setShowAddCompanyButton(false);
+      return;
+    }
+
+    const querySnapshot = await getDocs(collection(FIREBASE_DB, 'companies'));
+    const filteredCompanies = querySnapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        title: doc.data().name,
+      }))
+      .filter((item) => item.title.toLowerCase().startsWith(text.toLowerCase()));
+
+    setCompanySuggestions(filteredCompanies);
+    setShowAddCompanyButton(filteredCompanies.length === 0); // Show CTA only if no suggestions match
   }, []);
 
   const fetchColors = async () => {
@@ -57,76 +81,42 @@ const AddDisc = () => {
     );
   };
 
-  const handleBarcodeScanned = async ({ data }: { data: string }) => {
-    if (data !== scannedData) {
-      setScannedData(data);
-      setLoading(true);
+  const handleMoldSelect = async (selectedMold: string, companyName?: string) => {
+    setMold(selectedMold);
+    setMoldSuggestions([]);
 
-      try {
-        const discRef = doc(FIREBASE_DB, 'discmain', data);
-        const discSnapshot = await getDoc(discRef);
-
-        if (!discSnapshot.exists()) {
-          Alert.alert("Not Found", "We can't find that code.");
-          setScannedData(null); // Clear scanned data to allow another scan
-          return;
-        }
-
-        const user = FIREBASE_AUTH.currentUser;
-        if (user) {
-          const userDiscRef = doc(FIREBASE_DB, 'userDiscs', `${user.uid}_${data}`);
-          const userDiscSnapshot = await getDoc(userDiscRef);
-
-          if (userDiscSnapshot.exists()) {
-            if (userDiscSnapshot.data().userId === user.uid) {
-              Alert.alert("Already in Bag", "Hey, You already have this disc in your bag!");
-              navigation.navigate('Inventory');
-            } else {
-              Alert.alert("Already Added", "Sorry, this disc is already added to another player's bag.");
-              navigation.navigate('Inventory');
-            }
-            return;
-          }
-        }
-
-        setStep(1); // Allow user to add new disc details
-      } catch (error) {
-        console.error("Error fetching disc data:", error);
-        Alert.alert("Error", "Failed to fetch disc information.");
-      } finally {
-        setLoading(false);
-      }
+    if (companyName) {
+      // If the mold is recognized, skip to color selection and set the company
+      setCompany(companyName);
+      setCurrentStep('color');
+    } else {
+      // If the mold is new, proceed to company input step
+      setCurrentStep('company');
     }
   };
 
-  const handleSaveField = () => {
-    if (step === 1 && mold) setStep(2);
-    else if (step === 2 && color) setStep(3);
-  };
-
-  const handleMoldSelect = (selectedMold: { id: string; title: string; company?: string } | null) => {
-    if (selectedMold) {
-      setMold(selectedMold.title);
-      setCompany(selectedMold.company ?? '');
-    }
+  const handleCompanySelect = (selectedCompany: string) => {
+    setCompany(selectedCompany);
+    setCompanySuggestions([]);
+    setCurrentStep('color'); // Move to color selection
   };
 
   const handleColorSelect = (selectedColor: string) => {
     setColor(selectedColor);
-    setStep(3); // Move to the next step to show disc information
+    setCurrentStep('review'); // Move to review step
   };
 
   const handleAddDisc = async () => {
-    if (!mold || !color) {
+    if (!mold || !color || !company) {
       Alert.alert("Error", "Please fill out all fields.");
       return;
     }
 
     try {
       const discRef = doc(FIREBASE_DB, 'discmain', scannedData!);
-      await updateDoc(discRef, { company, mold, color });
-
+      await setDoc(discRef, { company, mold, color });
       const user = FIREBASE_AUTH.currentUser;
+
       if (user) {
         const userDiscRef = doc(FIREBASE_DB, 'userDiscs', `${user.uid}_${scannedData}`);
         await setDoc(userDiscRef, { uid: scannedData, userId: user.uid, company, mold, color });
@@ -136,7 +126,6 @@ const AddDisc = () => {
         Alert.alert("Error", "No user is logged in.");
       }
     } catch (error) {
-      console.error("Error saving disc data:", error);
       Alert.alert("Error", "Failed to save disc information.");
     }
   };
@@ -148,7 +137,7 @@ const AddDisc = () => {
         <View style={styles.cameraContainer}>
           <CameraView
             style={styles.camera}
-            onBarcodeScanned={handleBarcodeScanned}
+            onBarcodeScanned={({ data }) => setScannedData(data)}
             barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'code128'] }}
           />
         </View>
@@ -159,46 +148,86 @@ const AddDisc = () => {
             <ActivityIndicator size="large" color="#4CAF50" />
           ) : (
             <>
-              {step === 1 && (
+              {currentStep === 'mold' && (
                 <>
                   <Text style={styles.formTitle}>What is the Mold of your disc?</Text>
-                  <AutocompleteDropdown
-                    dataSet={moldSuggestions}
-                    onChangeText={fetchMolds}
-                    onSelectItem={(item) => handleMoldSelect(item as { id: string; title: string; company?: string } | null)}
-                    textInputProps={{
-                      placeholder: 'Mold',
-                      autoCorrect: false,
-                      style: styles.input,
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mold"
+                    value={mold}
+                    onChangeText={(text) => {
+                      setMold(text);
+                      fetchMolds(text);
                     }}
                   />
-                  <TouchableOpacity style={styles.button} onPress={handleSaveField}>
-                    <Text style={styles.buttonText}>Submit Mold</Text>
-                  </TouchableOpacity>
+                  {moldSuggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      {moldSuggestions.map((suggestion) => (
+                        <TouchableOpacity
+                          key={suggestion.id}
+                          onPress={() => handleMoldSelect(suggestion.title, suggestion.company)}
+                        >
+                          <Text style={styles.suggestionText}>{suggestion.title}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {showSubmitButton && (
+                    <TouchableOpacity style={styles.button} onPress={() => setCurrentStep('company')}>
+                      <Text style={styles.buttonText}>Add New Mold</Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
-              {step === 2 && (
+
+              {currentStep === 'company' && (
                 <>
-                  <Text style={styles.formTitle}>What color is your disc?</Text>
+                  <Text style={styles.formTitle}>Disc Company Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Company"
+                    value={company}
+                    onChangeText={(text) => {
+                      setCompany(text);
+                      fetchCompanies(text);
+                    }}
+                  />
+                  {companySuggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      {companySuggestions.map((suggestion) => (
+                        <TouchableOpacity key={suggestion.id} onPress={() => handleCompanySelect(suggestion.title)}>
+                          <Text style={styles.suggestionText}>{suggestion.title}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {showAddCompanyButton && (
+                    <TouchableOpacity style={styles.button} onPress={() => setCurrentStep('color')}>
+                      <Text style={styles.buttonText}>Add New Company</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              {currentStep === 'color' && (
+                <>
+                  <Text style={styles.formTitle}>Choose Your Color</Text>
                   <View style={styles.colorPalette}>
-                    {availableColors.map((color) => (
+                    {availableColors.map((colorOption) => (
                       <TouchableOpacity
-                        key={color.id}
+                        key={colorOption.id}
                         style={[
                           styles.colorCircle,
-                          {
-                            backgroundColor: color.name.toLowerCase() === 'clear' ? 'transparent' : color.name.toLowerCase(),
-                            borderColor: color.name.toLowerCase() === 'clear' ? '#4CAF50' : 'transparent', // Border for clear color
-                            borderWidth: color.name.toLowerCase() === 'clear' ? 1 : 0,
-                          },
+                          { backgroundColor: colorOption.name.toLowerCase() },
                         ]}
-                        onPress={() => handleColorSelect(color.name)}
+                        onPress={() => handleColorSelect(colorOption.name)}
                       />
                     ))}
                   </View>
                 </>
               )}
-              {step === 3 && (
+
+              {currentStep === 'review' && (
                 <>
                   <Text style={styles.formTitle}>Review Disc Information</Text>
                   <Text>Company: {company}</Text>
@@ -224,11 +253,13 @@ const styles = StyleSheet.create({
   camera: { width: '100%', height: '100%' },
   formContainer: { marginTop: 20, width: '80%' },
   formTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  colorPalette: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginVertical: 20 },
-  colorCircle: { width: 40, height: 40, borderRadius: 20, margin: 5 },
   input: { padding: 10, borderRadius: 5, backgroundColor: '#FFF', borderColor: '#4CAF50', borderWidth: 1 },
+  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 5, marginTop: 5, padding: 5 },
+  suggestionText: { paddingVertical: 5, fontSize: 16 },
   button: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 },
   buttonText: { color: '#FFF', fontWeight: 'bold' },
+  colorPalette: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginVertical: 20 },
+  colorCircle: { width: 40, height: 40, borderRadius: 20, margin: 5 },
 });
 
 export default AddDisc;
