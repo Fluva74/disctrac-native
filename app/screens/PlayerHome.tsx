@@ -1,12 +1,12 @@
 // PlayerHome.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Linking, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
 import { signOut } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
-import styles from '../styles';
+// import styles from '../styles';
 
 const PlayerHome = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
@@ -114,6 +114,14 @@ const PlayerHome = () => {
                 <Text style={styles.buttonText}>Weather Forecast</Text>
             </TouchableOpacity>
 
+            {/* Button to navigate to TestAutoCompleteDropdown */}
+            <TouchableOpacity
+                style={styles.button}
+                onPress={() => navigation.navigate('TestAutoCompleteDropdown')}
+            >
+                <Text style={styles.buttonText}>Test Autocomplete</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
                 style={styles.button}
                 onPress={handleSignOut}
@@ -123,5 +131,47 @@ const PlayerHome = () => {
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    inputContainer: {
+      width: '80%',
+    },
+    suggestionsContainer: {
+      backgroundColor: '#FFF',
+      borderColor: '#4CAF50',
+      borderWidth: 1,
+    },
+    welcomeText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    button: {
+        backgroundColor: '#4CAF50',
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+        width: '80%',
+        marginVertical: 5,
+    },
+    buttonText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+  });
 
 export default PlayerHome;

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AutocompleteDropdownContextProvider } from 'react-native-autocomplete-dropdown';
 import Login from './app/screens/Login';
 import AccountSelection from './app/screens/AccountSelection';
 import PlayerCreate from './app/screens/PlayerCreate';
@@ -15,10 +16,10 @@ import AddDisc from './app/screens/AddDisc';
 import DiscGolfVideos from './app/screens/DiscGolfVideos';
 import ProVideos from './app/screens/ProVideos';
 import AmateurVideos from './app/screens/AmateurVideos';
+import TestAutoCompleteDropdown from './app/screens/TestAutoCompleteDropdown';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from './FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
-
 
 export type RootStackParamList = {
     Login: undefined;
@@ -38,6 +39,7 @@ export type InsideStackParamList = {
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
+    TestAutoCompleteDropdown: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,22 +71,24 @@ function App() {
     }, []);
 
     return (
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-                {user && initialRoute ? (
-                    <Stack.Screen name="Inside">
-                        {() => <InsideLayout initialRoute={initialRoute} />}
-                    </Stack.Screen>
-                ) : (
-                    <>
-                        <Stack.Screen name="Login" component={Login} />
-                        <Stack.Screen name="AccountSelection" component={AccountSelection} />
-                        <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
-                        <Stack.Screen name="StoreCreate" component={StoreCreate} />
-                    </>
-                )}
-            </Stack.Navigator>
-        </NavigationContainer>
+        <AutocompleteDropdownContextProvider>
+            <NavigationContainer>
+                <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+                    {user && initialRoute ? (
+                        <Stack.Screen name="Inside">
+                            {() => <InsideLayout initialRoute={initialRoute} />}
+                        </Stack.Screen>
+                    ) : (
+                        <>
+                            <Stack.Screen name="Login" component={Login} />
+                            <Stack.Screen name="AccountSelection" component={AccountSelection} />
+                            <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
+                            <Stack.Screen name="StoreCreate" component={StoreCreate} />
+                        </>
+                    )}
+                </Stack.Navigator>
+            </NavigationContainer>
+        </AutocompleteDropdownContextProvider>
     );
 }
 
@@ -100,6 +104,7 @@ const InsideLayout = ({ initialRoute }: { initialRoute: keyof InsideStackParamLi
             <InsideStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
             <InsideStack.Screen name="ProVideos" component={ProVideos} />
             <InsideStack.Screen name="AmateurVideos" component={AmateurVideos} />
+            <InsideStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} />
         </InsideStack.Navigator>
     );
 };
