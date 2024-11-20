@@ -1,3 +1,4 @@
+//AddDisc.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Alert, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';

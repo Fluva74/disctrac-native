@@ -1,12 +1,11 @@
 // Inventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 import { FontAwesome } from '@expo/vector-icons';
-import styles from '../styles';
 
 const Inventory = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
@@ -83,9 +82,15 @@ const Inventory = () => {
 
     const renderDisc = ({ item }: { item: any }) => {
         const isSelected = item.id === selectedDiscId;
+        const isFoundByStore = item.status === "foundByStore"; // Check if the disc was found by the store
+
         return (
             <TouchableOpacity
-                style={[styles.row, isSelected && styles.selectedRow]}
+                style={[
+                    styles.row,
+                    isSelected && styles.selectedRow,
+                    isFoundByStore && styles.foundRow // Apply red background for discs found by store
+                ]}
                 onPress={() => handleSelectDisc(item.id)}
             >
                 <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.mold}</Text>
@@ -95,7 +100,7 @@ const Inventory = () => {
                 {isSelected && (
                     <View style={styles.actionsContainer}>
                         <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={styles.actionButton}>
-                        <FontAwesome name="trash" size={20} style={styles.trashIcon} />
+                            <FontAwesome name="trash" size={20} style={styles.trashIcon} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleWatchReviews(item.company, item.mold)} style={styles.actionButton}>
                             <Text style={styles.watchReviewsText}>Watch Disc Reviews</Text>
@@ -141,5 +146,28 @@ const Inventory = () => {
         </View>
     );
 };
+
+// Add the missing style for the found row, selected row, etc.
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f0f4f8', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+    table: { width: '100%' },
+    row: { flexDirection: 'row', padding: 10, borderBottomWidth: 1, borderColor: '#ccc' },
+    cell: { flex: 1, textAlign: 'center' },
+    headerCell: { flex: 1, textAlign: 'center', fontWeight: 'bold' },
+    buttonContainer: { flexDirection: 'row', marginTop: 20 },
+    button: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, alignItems: 'center', margin: 5 },
+    homeButton: { backgroundColor: '#2196F3' },
+    buttonText: { color: '#FFF', fontWeight: 'bold' },
+    loadingIndicator: { marginTop: 20 },
+    noDiscsText: { textAlign: 'center', color: '#999' },
+    welcomeText: { fontSize: 20, marginVertical: 20 },
+    actionsContainer: { flexDirection: 'row', marginTop: 10 },
+    actionButton: { marginHorizontal: 10 },
+    watchReviewsText: { color: '#007BFF' },
+    selectedRow: { backgroundColor: '#E8F4E8' },
+    selectedRowText: { color: '#4CAF50' },
+    trashIcon: { color: '#FF6347' },
+    foundRow: { backgroundColor: '#F8D7DA' }, // Red background for found by store discs
+});
 
 export default Inventory;

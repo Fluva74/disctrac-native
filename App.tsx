@@ -12,6 +12,7 @@ import PlayerHome from './app/screens/PlayerHome';
 import StoreHome from './app/screens/StoreHome';
 import Inventory from './app/screens/Inventory';
 import StoreInventory from './app/screens/StoreInventory';
+import StoreAddDisc from './app/screens/StoreAddDisc';
 import AddDisc from './app/screens/AddDisc';
 import DiscGolfVideos from './app/screens/DiscGolfVideos';
 import ProVideos from './app/screens/ProVideos';
@@ -35,6 +36,7 @@ export type InsideStackParamList = {
     StoreHome: undefined;
     Inventory: undefined;
     StoreInventory: undefined;
+    StoreAddDisc: undefined;
     AddDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
@@ -98,6 +100,7 @@ const InsideLayout = ({ initialRoute }: { initialRoute: keyof InsideStackParamLi
         <InsideStack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
             <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
             <InsideStack.Screen name="StoreHome" component={StoreHome} />
+            <InsideStack.Screen name="StoreAddDisc" component={StoreAddDisc} />
             <InsideStack.Screen name="Inventory" component={Inventory} />
             <InsideStack.Screen name="StoreInventory" component={StoreInventory} />
             <InsideStack.Screen name="AddDisc" component={AddDisc} />

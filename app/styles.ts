@@ -235,4 +235,10 @@ export default StyleSheet.create({
         justifyContent: 'space-around',
         width: '100%',
     },
+    foundRow: {
+        backgroundColor: '#F8D7DA', // Red background for "found" discs
+    },
+    notifiedRow: {
+        backgroundColor: '#DFF0D8', // Light green to indicate "notified" status in store inventory
+    },
 });
