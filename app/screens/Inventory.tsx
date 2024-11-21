@@ -1,16 +1,28 @@
-// Inventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
-import { FontAwesome } from '@expo/vector-icons';
+
+// Mapping colors to their respective image filenames
+const colorToImageMap: { [key: string]: any } = {
+    blue: require('../../assets/discBlue.png'),
+    brown: require('../../assets/discBrown.png'),
+    gray: require('../../assets/discGray.png'),
+    green: require('../../assets/discGreen.png'),
+    orange: require('../../assets/discOrange.png'),
+    pink: require('../../assets/discPink.png'),
+    purple: require('../../assets/discPurple.png'),
+    red: require('../../assets/discRed.png'),
+    white: require('../../assets/discWhite.png'),
+    yellow: require('../../assets/discYellow.png'),
+};
 
 const Inventory = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
     const [discs, setDiscs] = useState<any[]>([]);
-    const [selectedDiscId, setSelectedDiscId] = useState<string | null>(null);
+    const [selectedDisc, setSelectedDisc] = useState<any | null>(null); // Updated to hold the selected disc object
     const [loading, setLoading] = useState(true);
 
     const fetchDiscs = async (userId: string) => {
@@ -43,8 +55,8 @@ const Inventory = () => {
         }, [])
     );
 
-    const handleSelectDisc = (discId: string) => {
-        setSelectedDiscId(discId === selectedDiscId ? null : discId);
+    const handleSelectDisc = (disc: any) => {
+        setSelectedDisc(selectedDisc?.id === disc.id ? null : disc); // Toggle selection
     };
 
     const handleDeleteDisc = async (discId: string) => {
@@ -59,7 +71,7 @@ const Inventory = () => {
                         try {
                             await deleteDoc(doc(FIREBASE_DB, "userDiscs", discId));
                             setDiscs((prevDiscs) => prevDiscs.filter((disc) => disc.id !== discId));
-                            setSelectedDiscId(null);
+                            setSelectedDisc(null);
                         } catch (error) {
                             console.error("Error deleting disc:", error);
                             Alert.alert("Error", "Failed to remove disc.");
@@ -81,34 +93,25 @@ const Inventory = () => {
     };
 
     const renderDisc = ({ item }: { item: any }) => {
-        const isSelected = item.id === selectedDiscId;
         const isFoundByStore = item.status === "foundByStore"; // Check if the disc was found by the store
 
         return (
             <TouchableOpacity
                 style={[
                     styles.row,
-                    isSelected && styles.selectedRow,
                     isFoundByStore && styles.foundRow // Apply red background for discs found by store
                 ]}
-                onPress={() => handleSelectDisc(item.id)}
+                onPress={() => handleSelectDisc(item)}
             >
-                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.mold}</Text>
-                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.company}</Text>
-                <Text style={[styles.cell, isSelected && styles.selectedRowText]}>{item.color}</Text>
-                
-                {isSelected && (
-                    <View style={styles.actionsContainer}>
-                        <TouchableOpacity onPress={() => handleDeleteDisc(item.id)} style={styles.actionButton}>
-                            <FontAwesome name="trash" size={20} style={styles.trashIcon} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleWatchReviews(item.company, item.mold)} style={styles.actionButton}>
-                            <Text style={styles.watchReviewsText}>Watch Disc Reviews</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                <Text style={styles.cell}>{item.mold}</Text>
+                <Text style={styles.cell}>{item.company}</Text>
+                <Text style={styles.cell}>{item.color}</Text>
             </TouchableOpacity>
         );
+    };
+
+    const getDiscImage = (color: string) => {
+        return colorToImageMap[color.toLowerCase()] || require('../../assets/discGray.png'); // Default to gray
     };
 
     return (
@@ -135,6 +138,30 @@ const Inventory = () => {
                 </View>
             )}
 
+            {selectedDisc && (
+                <View style={styles.card}>
+                    <Image
+                        source={getDiscImage(selectedDisc.color)}
+                        style={styles.discImage}
+                    />
+                    <Text style={styles.cardText}>Mold: {selectedDisc.mold}</Text>
+                    <Text style={styles.cardText}>Company: {selectedDisc.company}</Text>
+                    <Text style={styles.cardText}>Color: {selectedDisc.color}</Text>
+                    <TouchableOpacity
+                        style={styles.cardButton}
+                        onPress={() => handleWatchReviews(selectedDisc.company, selectedDisc.mold)}
+                    >
+                        <Text style={styles.cardButtonText}>Watch Disc Reviews</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.cardButton}
+                        onPress={() => handleDeleteDisc(selectedDisc.id)}
+                    >
+                        <Text style={styles.cardButtonText}>Remove Disc</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <View style={styles.buttonContainer}>
                 <TouchableOpacity style={[styles.button, styles.homeButton]} onPress={navigateToHome}>
                     <Text style={styles.buttonText}>Home</Text>
@@ -147,7 +174,7 @@ const Inventory = () => {
     );
 };
 
-// Add the missing style for the found row, selected row, etc.
+// Add the missing style for the card and other elements
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f0f4f8', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
     table: { width: '100%' },
@@ -161,13 +188,29 @@ const styles = StyleSheet.create({
     loadingIndicator: { marginTop: 20 },
     noDiscsText: { textAlign: 'center', color: '#999' },
     welcomeText: { fontSize: 20, marginVertical: 20 },
-    actionsContainer: { flexDirection: 'row', marginTop: 10 },
-    actionButton: { marginHorizontal: 10 },
-    watchReviewsText: { color: '#007BFF' },
-    selectedRow: { backgroundColor: '#E8F4E8' },
-    selectedRowText: { color: '#4CAF50' },
-    trashIcon: { color: '#FF6347' },
+    card: {
+        padding: 20,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    cardText: { fontSize: 16, marginBottom: 10 },
+    cardButton: {
+        backgroundColor: '#4CAF50',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    cardButtonText: { color: '#FFF', fontWeight: 'bold' },
     foundRow: { backgroundColor: '#F8D7DA' }, // Red background for found by store discs
+    discImage: { width: 100, height: 100, marginBottom: 10 }, // Style for the disc image
 });
 
 export default Inventory;

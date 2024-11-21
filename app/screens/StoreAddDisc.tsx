@@ -66,26 +66,26 @@ const StoreAddDisc = () => {
         try {
             if (discData && discData.userId) {
                 const compositeDocId = `${discData.userId}_${discData.uid}`;
-                console.log("Constructed compositeDocId for userDiscs:", compositeDocId);
-    
-                // Step 1: Update the player's inventory disc status to "foundByStore"
                 const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', compositeDocId);
-                await updateDoc(playerDiscRef, { status: 'foundByStore' });
     
-                // Step 2: Add the disc to the store inventory with status "notifiedPlayer"
+                // Update the status to "notified"
+                await updateDoc(playerDiscRef, { status: 'notified' });
+    
+                // Add to store inventory without changing the color of the disc
                 const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', discData.uid);
                 await setDoc(storeInventoryRef, { ...discData, status: 'notifiedPlayer' });
     
-                Alert.alert("Success", "Player notified. Disc added to store inventory.");
+                Alert.alert('Success', 'Player notified. Disc added to store inventory.');
                 navigation.goBack();
             } else {
-                Alert.alert("Error", "Disc does not belong to any player.");
+                Alert.alert('Error', 'Disc does not belong to any player.');
             }
         } catch (error) {
-            console.error("Error notifying player:", error);
-            Alert.alert("Error", "Failed to notify player.");
+            console.error('Error notifying player:', error);
+            Alert.alert('Error', 'Failed to notify player.');
         }
     };
+    
     
     
     
