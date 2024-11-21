@@ -1,3 +1,4 @@
+//StoreAddDisc.tsx
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -65,17 +66,22 @@ const StoreAddDisc = () => {
     const handleNotifyPlayer = async () => {
         try {
             if (discData && discData.userId) {
+                // Composite document ID: userId + "_" + disc UID
                 const compositeDocId = `${discData.userId}_${discData.uid}`;
                 const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', compositeDocId);
     
-                // Update the status to "notified"
-                await updateDoc(playerDiscRef, { status: 'notified' });
+                // Step 1: Update player's inventory disc status to "foundByStore"
+                await updateDoc(playerDiscRef, { status: 'foundByStore' });
     
-                // Add to store inventory without changing the color of the disc
+                // Step 2: Add disc to store's inventory with "notifiedPlayer" status
                 const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', discData.uid);
-                await setDoc(storeInventoryRef, { ...discData, status: 'notifiedPlayer' });
+                await setDoc(storeInventoryRef, {
+                    ...discData,
+                    status: 'notifiedPlayer',
+                    notifiedAt: new Date().toISOString(),
+                });
     
-                Alert.alert('Success', 'Player notified. Disc added to store inventory.');
+                Alert.alert('Success', 'Player notified and disc added to store inventory.');
                 navigation.goBack();
             } else {
                 Alert.alert('Error', 'Disc does not belong to any player.');
@@ -85,6 +91,8 @@ const StoreAddDisc = () => {
             Alert.alert('Error', 'Failed to notify player.');
         }
     };
+    
+    
     
     
     

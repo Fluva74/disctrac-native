@@ -1,3 +1,4 @@
+//Inventory.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert, Linking, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
@@ -31,12 +32,16 @@ const Inventory = () => {
             const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
             const q = query(userDiscsRef, where('userId', '==', userId));
             const querySnapshot = await getDocs(q);
-
-            const discsList = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
+    
+            const discsList = querySnapshot.docs.map((doc) => {
+                const data = doc.data();
+                console.log('Fetched Disc:', data); // Log the entire disc object
+                return {
+                    id: doc.id,
+                    ...data,
+                };
+            });
+    
             setDiscs(discsList);
         } catch (error) {
             console.error('Error fetching discs:', error);
@@ -45,6 +50,15 @@ const Inventory = () => {
             setLoading(false);
         }
     };
+    
+    useEffect(() => {
+        const user = FIREBASE_AUTH.currentUser;
+        if (user) {
+            fetchDiscs(user.uid); // Fetch discs for the current user
+        }
+    }, []); // Empty dependency array ensures this runs only on component mount
+
+    
 
     useFocusEffect(
         useCallback(() => {
@@ -93,14 +107,14 @@ const Inventory = () => {
     };
 
     const renderDisc = ({ item }: { item: any }) => {
-        const isFoundByStore = item.status === "foundByStore"; // Check if the disc was found by the store
+        console.log('Rendering Disc Status:', item.status); // Debugging status
+        const isFoundByStore = item.status === 'foundByStore';
+        console.log('Disc Styles:', [styles.row, isFoundByStore ? styles.foundRow : null]);
 
+    
         return (
             <TouchableOpacity
-                style={[
-                    styles.row,
-                    isFoundByStore && styles.foundRow // Apply red background for discs found by store
-                ]}
+                style={[styles.row, isFoundByStore ? styles.foundRow : null]} // Ensure the condition applies correctly
                 onPress={() => handleSelectDisc(item)}
             >
                 <Text style={styles.cell}>{item.mold}</Text>
@@ -109,6 +123,9 @@ const Inventory = () => {
             </TouchableOpacity>
         );
     };
+    
+    
+    
 
     const getDiscImage = (color: string) => {
         return colorToImageMap[color.toLowerCase()] || require('../../assets/discGray.png'); // Default to gray
