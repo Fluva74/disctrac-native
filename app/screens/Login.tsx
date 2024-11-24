@@ -1,6 +1,7 @@
-// Login.tsx
+//file.Login.tsx
+
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, ActivityIndicator, Image } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { doc, getDoc } from 'firebase/firestore';
@@ -46,7 +47,12 @@ const Login = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.loginHeader}>disctrac</Text> 
+            {/* Replace the header text with the logo */}
+            <Image
+                source={require('../../assets/dtLogoGreen.png')} // Path to the logo
+                style={styles.logo} // Define logo styling
+                resizeMode="contain" // Adjust resizing as needed
+            />
 
             <TextInput
                 value={email}

@@ -1,176 +1,135 @@
-//StoreAddDisc.tsx
+//file.StoreAddDisc.tsx
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FIREBASE_DB } from '../../FirebaseConfig';
-import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 
 interface DiscData {
-    uid: string;
-    company: string;
-    mold: string;
-    color: string;
-    userId: string; // Ensure userId is optional
+  uid: string;
+  name: string;
+  manufacturer: string;
+  color: string;
+  userId: string;
 }
 
 const StoreAddDisc = () => {
-    const [scannedData, setScannedData] = useState<string | null>(null);
-    const [discData, setDiscData] = useState<DiscData | null>(null);
-    const [hasPermission, requestPermission] = useCameraPermissions();
-    const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
+  const [scannedData, setScannedData] = useState<string | null>(null);
+  const [discData, setDiscData] = useState<DiscData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
 
-    const handleBarcodeScanned = async ({ data }: { data: string }) => {
-        if (!scannedData) {
-            setScannedData(data);
-            await fetchDiscData(data);
-        }
-    };
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (!scannedData) {
+      setScannedData(data);
+      await fetchDiscData(data);
+    }
+  };
 
-    const fetchDiscData = async (scannedCode: string) => {
-        try {
-            console.log("Fetching disc data from userDiscs for scannedCode:", scannedCode);
-    
-            // Step 1: Query `userDiscs` collection to find a document with the matching `uid`
-            const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
-            const q = query(userDiscsRef, where("uid", "==", scannedCode));
-            const querySnapshot = await getDocs(q);
-    
-            if (!querySnapshot.empty) {
-                const docSnap = querySnapshot.docs[0]; // Get the first matching document
-                const data = docSnap.data();
-                const discInfo: DiscData = {
-                    uid: scannedCode,
-                    company: data.company || 'N/A',
-                    mold: data.mold || 'N/A',
-                    color: data.color || 'N/A',
-                    userId: data.userId || '' // userId should now be available from the query
-                };
-    
-                console.log("Fetched disc data from userDiscs:", discInfo);
-                setDiscData(discInfo);
-            } else {
-                Alert.alert("Error", "This disc ID does not belong to any player.");
-                console.log("userDiscs entry does not exist for scannedCode:", scannedCode);
-                navigation.goBack();
-            }
-        } catch (error) {
-            console.error("Error fetching disc data:", error);
-            Alert.alert("Error", "Failed to fetch disc information.");
-            navigation.goBack();
-        }
-    };
-    
-    
-    const handleNotifyPlayer = async () => {
-        try {
-            if (discData && discData.userId) {
-                // Composite document ID: userId + "_" + disc UID
-                const compositeDocId = `${discData.userId}_${discData.uid}`;
-                const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', compositeDocId);
-    
-                // Step 1: Update player's inventory disc status to "foundByStore"
-                await updateDoc(playerDiscRef, { status: 'foundByStore' });
-    
-                // Step 2: Add disc to store's inventory with "notifiedPlayer" status
-                const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', discData.uid);
-                await setDoc(storeInventoryRef, {
-                    ...discData,
-                    status: 'notifiedPlayer',
-                    notifiedAt: new Date().toISOString(),
-                });
-    
-                Alert.alert('Success', 'Player notified and disc added to store inventory.');
-                navigation.goBack();
-            } else {
-                Alert.alert('Error', 'Disc does not belong to any player.');
-            }
-        } catch (error) {
-            console.error('Error notifying player:', error);
-            Alert.alert('Error', 'Failed to notify player.');
-        }
-    };
-    
-    
-    
-    
-    
-    
-    const handleCancel = () => {
-        navigation.goBack();
-    };
+  const fetchDiscData = async (scannedCode: string) => {
+    setLoading(true);
+    try {
+      const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
+      const q = query(userDiscsRef, where('uid', '==', scannedCode));
+      const querySnapshot = await getDocs(q);
 
-    return (
-        <View style={styles.container}>
-            {!scannedData && (
-                <View style={styles.cameraContainer}>
-                    <CameraView
-                        style={styles.camera}
-                        onBarcodeScanned={handleBarcodeScanned}
-                        barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'code128'] }}
-                    />
-                </View>
-            )}
-            {discData && (
-                <View style={styles.discContainer}>
-                    <Text>Mold: {discData.mold}</Text>
-                    <Text>Company: {discData.company}</Text>
-                    <Text>Color: {discData.color}</Text>
-                    <TouchableOpacity style={styles.button} onPress={handleNotifyPlayer}>
-                        <Text style={styles.buttonText}>Notify Player</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.button} onPress={handleCancel}>
-                        <Text style={styles.buttonText}>Cancel</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        const data = docSnap.data();
+        setDiscData({
+          uid: scannedCode,
+          name: data.name,
+          manufacturer: data.manufacturer,
+          color: data.color,
+          userId: data.userId,
+        });
+      } else {
+        Alert.alert('Error', 'This disc ID is not assigned to any player.');
+        navigation.navigate('StoreInventory');
+      }
+    } catch (error) {
+      console.error('Error fetching disc data:', error);
+      Alert.alert('Error', 'Failed to fetch disc information.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNotifyPlayer = async () => {
+    try {
+      if (discData) {
+        const { userId, uid, name, manufacturer, color } = discData;
+
+        // Update user inventory
+        const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', `${userId}_${uid}`);
+        await updateDoc(playerDiscRef, { status: 'notified' });
+
+        // Add to store inventory
+        const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', uid);
+        await setDoc(storeInventoryRef, {
+          uid,
+          name,
+          manufacturer,
+          color,
+          status: 'notifiedPlayer',
+          userId,
+          notifiedAt: new Date().toISOString(),
+        });
+
+        Alert.alert('Success', 'Player notified and disc added to store inventory.');
+        navigation.navigate('StoreInventory');
+      }
+    } catch (error) {
+      console.error('Error notifying player:', error);
+      Alert.alert('Error', 'Failed to notify player.');
+    }
+  };
+
+  const handleCancel = () => {
+    navigation.navigate('StoreInventory');
+  };
+
+  return (
+    <View style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#4CAF50" />
+      ) : discData ? (
+        <View style={styles.card}>
+          <Text style={styles.cardText}>Name: {discData.name}</Text>
+          <Text style={styles.cardText}>Manufacturer: {discData.manufacturer}</Text>
+          <Text style={styles.cardText}>Color: {discData.color}</Text>
+          <TouchableOpacity style={styles.button} onPress={handleNotifyPlayer}>
+            <Text style={styles.buttonText}>Notify Player</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
+            <Text style={styles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
-    );
+      ) : (
+        <View style={styles.cameraContainer}>
+          <CameraView
+            style={styles.camera}
+            onBarcodeScanned={handleBarcodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'code128'] }}
+          />
+        </View>
+      )}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        backgroundColor: '#f0f4f8', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        paddingHorizontal: 16 
-    },
-    cameraContainer: { 
-        width: '100%', 
-        height: 300, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        marginVertical: 20 
-    },
-    camera: { 
-        width: '100%', 
-        height: '100%' 
-    },
-    discContainer: { 
-        alignItems: 'center', 
-        padding: 16, 
-        marginTop: 20, 
-        backgroundColor: '#fff', 
-        borderRadius: 10, 
-        shadowColor: '#000', 
-        shadowOffset: { width: 0, height: 2 }, 
-        shadowOpacity: 0.2, 
-        shadowRadius: 4, 
-        elevation: 2 
-    },
-    button: { 
-        backgroundColor: '#4CAF50', 
-        padding: 10, 
-        borderRadius: 5, 
-        alignItems: 'center', 
-        marginTop: 10 
-    },
-    buttonText: { 
-        color: '#FFF', 
-        fontWeight: 'bold' 
-    },
+  container: { flex: 1, backgroundColor: '#f0f4f8', alignItems: 'center', justifyContent: 'center' },
+  cameraContainer: { width: '100%', height: 300, justifyContent: 'center', alignItems: 'center' },
+  camera: { width: '100%', height: '100%' },
+  card: { backgroundColor: '#fff', padding: 20, borderRadius: 10, alignItems: 'center' },
+  cardText: { fontSize: 16, marginBottom: 10 },
+  button: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, marginVertical: 5 },
+  cancelButton: { backgroundColor: '#F44336' },
+  buttonText: { color: '#fff', fontWeight: 'bold' },
 });
 
 export default StoreAddDisc;

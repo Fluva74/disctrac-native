@@ -14,6 +14,9 @@ import Inventory from './app/screens/Inventory';
 import StoreInventory from './app/screens/StoreInventory';
 import StoreAddDisc from './app/screens/StoreAddDisc';
 import AddDisc from './app/screens/AddDisc';
+import ColorChanger from './app/screens/ColorChanger';
+import ScannerScreen from './app/screens/ScannerScreen';
+// import CustomizeDisc from './app/screens/CustomizeDisc';
 import DiscGolfVideos from './app/screens/DiscGolfVideos';
 import ProVideos from './app/screens/ProVideos';
 import AmateurVideos from './app/screens/AmateurVideos';
@@ -37,7 +40,10 @@ export type InsideStackParamList = {
     Inventory: undefined;
     StoreInventory: undefined;
     StoreAddDisc: undefined;
-    AddDisc: undefined;
+    AddDisc: { scannedData?: string };
+    ColorChanger: undefined;
+    ScannerScreen: undefined;
+    CustomizeDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
@@ -104,6 +110,9 @@ const InsideLayout = ({ initialRoute }: { initialRoute: keyof InsideStackParamLi
             <InsideStack.Screen name="Inventory" component={Inventory} />
             <InsideStack.Screen name="StoreInventory" component={StoreInventory} />
             <InsideStack.Screen name="AddDisc" component={AddDisc} />
+            <InsideStack.Screen name="ColorChanger" component={ColorChanger} />
+            <InsideStack.Screen name="ScannerScreen" component={ScannerScreen} />
+            {/* <InsideStack.Screen name="CustomizeDisc" component={CustomizeDisc} /> */}
             <InsideStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
             <InsideStack.Screen name="ProVideos" component={ProVideos} />
             <InsideStack.Screen name="AmateurVideos" component={AmateurVideos} />

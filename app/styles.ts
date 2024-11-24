@@ -8,6 +8,13 @@ export default StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 20,
     },
+    logo: {
+        width: 200, // Adjust width as needed
+        height: 100, // Adjust height as needed
+        alignSelf: 'center', // Center the logo horizontally
+        marginBottom: 20, // Add spacing below the logo
+    },
+    
     input: {
         height: 50,
         width: '90%',

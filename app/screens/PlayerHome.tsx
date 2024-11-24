@@ -117,10 +117,11 @@ const PlayerHome = () => {
             {/* Button to navigate to TestAutoCompleteDropdown */}
             <TouchableOpacity
                 style={styles.button}
-                onPress={() => navigation.navigate('TestAutoCompleteDropdown')}
-            >
-                <Text style={styles.buttonText}>Test Autocomplete</Text>
-            </TouchableOpacity>
+                onPress={() => navigation.navigate('ColorChanger')}
+                >
+                <Text style={styles.buttonText}>Color Changer</Text>
+                </TouchableOpacity>
+
 
             <TouchableOpacity
                 style={styles.button}

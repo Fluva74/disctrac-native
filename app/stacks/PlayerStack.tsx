@@ -4,6 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import PlayerHome from '../screens/PlayerHome';
 import Inventory from '../screens/Inventory';
 import AddDisc from '../screens/AddDisc';
+import ColorChanger from '../screens/ColorChanger';
+import ScannerScreen from '../screens/ScannerScreen';
+// import CustomizeDisc from '../screens/CustomizeDisc';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
 import ProVideos from '../screens/ProVideos';
 import AmateurVideos from '../screens/AmateurVideos';
@@ -13,7 +16,10 @@ export type PlayerStackParamList = {
     PlayerHome: undefined;
     Details: undefined;
     Inventory: undefined;
-    AddDisc: undefined;
+    AddDisc: { scannedData?: string };
+    ColorChanger: undefined;
+    ScannerScreen: undefined;
+    CustomizeDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
@@ -28,6 +34,9 @@ export default function PlayerStackNavigator() {
             <PlayerStack.Screen name="PlayerHome" component={PlayerHome} />
             <PlayerStack.Screen name="Inventory" component={Inventory} />
             <PlayerStack.Screen name="AddDisc" component={AddDisc} />
+            <PlayerStack.Screen name="ColorChanger" component={ColorChanger} />
+            <PlayerStack.Screen name="ScannerScreen" component={ScannerScreen} />
+            {/* <PlayerStack.Screen name="CustomizeDisc" component={CustomizeDisc} /> */}
             <PlayerStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
             <PlayerStack.Screen name="ProVideos" component={ProVideos} />
             <PlayerStack.Screen name="AmateurVideos" component={AmateurVideos} />
