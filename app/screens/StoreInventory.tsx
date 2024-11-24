@@ -1,5 +1,3 @@
-//file.StoreInventory.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -35,6 +33,7 @@ interface DiscItem {
   status: string; // "notifiedPlayer", "yellowAlert", "criticalAlert", or "released"
   uid: string; // Unique ID of the disc
   userId: string; // Player ID associated with the disc
+  notifiedAt: string; // Timestamp for sorting
 }
 
 const StoreInventory = () => {
@@ -57,12 +56,33 @@ const StoreInventory = () => {
 
       console.log('[Firestore] Raw data:', allDiscs);
 
-      const notified = allDiscs.filter(
-        (disc) => disc.status === 'notifiedPlayer' || disc.status === 'yellowAlert' || disc.status === 'criticalAlert'
-      );
+      const notified = allDiscs
+        .filter(
+          (disc) =>
+            disc.status === 'notifiedPlayer' || disc.status === 'yellowAlert' || disc.status === 'criticalAlert'
+        )
+        .sort((a, b) => {
+          // Sort by status and then by timestamp
+          const statusPriority: Record<string, number> = {
+            criticalAlert: 1,
+            yellowAlert: 2,
+            notifiedPlayer: 3,
+          };
+          const priorityA = statusPriority[a.status] || 0;
+          const priorityB = statusPriority[b.status] || 0;
+
+          // Primary sort by priority (critical -> yellow -> green)
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+
+          // Secondary sort by notifiedAt timestamp (oldest first)
+          return new Date(a.notifiedAt).getTime() - new Date(b.notifiedAt).getTime();
+        });
+
       const released = allDiscs.filter((disc) => disc.status === 'released');
 
-      console.log('[Firestore] Notified Discs:', notified);
+      console.log('[Firestore] Notified Discs (sorted):', notified);
       console.log('[Firestore] Released Discs:', released);
 
       setNotifiedDiscs(notified);
