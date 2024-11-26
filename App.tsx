@@ -8,32 +8,23 @@ import Login from './app/screens/Login';
 import AccountSelection from './app/screens/AccountSelection';
 import PlayerCreate from './app/screens/PlayerCreate';
 import StoreCreate from './app/screens/StoreCreate';
-import PlayerHome from './app/screens/PlayerHome';
-import StoreHome from './app/screens/StoreHome';
-import Inventory from './app/screens/Inventory';
-import StoreInventory from './app/screens/StoreInventory';
-import StoreAddDisc from './app/screens/StoreAddDisc';
-import AddDisc from './app/screens/AddDisc';
-import ColorChanger from './app/screens/ColorChanger';
-import ScannerScreen from './app/screens/ScannerScreen';
-// import CustomizeDisc from './app/screens/CustomizeDisc';
-import DiscGolfVideos from './app/screens/DiscGolfVideos';
-import ProVideos from './app/screens/ProVideos';
-import AmateurVideos from './app/screens/AmateurVideos';
-import TestAutoCompleteDropdown from './app/screens/TestAutoCompleteDropdown';
+import PlayerStackNavigator from './app/stacks/PlayerStack'; // Updated for player stack
+import StoreStackNavigator from './app/stacks/StoreStack'; // Updated for store stack
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from './FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
+// Define RootStackParamList for app-level navigation
 export type RootStackParamList = {
     Login: undefined;
-    Inside: { screen: keyof InsideStackParamList };
+    Inside: undefined;
     AccountSelection: undefined;
     PlayerCreate: undefined;
     StoreCreate: undefined;
 };
 
-// Define and export InsideStackParamList for screens in InsideLayout
+// App.tsx
+
 export type InsideStackParamList = {
     PlayerHome: undefined;
     StoreHome: undefined;
@@ -48,13 +39,15 @@ export type InsideStackParamList = {
     ProVideos: undefined;
     AmateurVideos: undefined;
     TestAutoCompleteDropdown: undefined;
+    YourDiscFoundNotification: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 function App() {
     const [user, setUser] = useState<User | null>(null);
-    const [initialRoute, setInitialRoute] = useState<keyof InsideStackParamList | null>(null); 
+    const [userRole, setUserRole] = useState<'player' | 'store' | null>(null);
+    const [initialRoute, setInitialRoute] = useState<string | null>(null);
 
     useEffect(() => {
         onAuthStateChanged(FIREBASE_AUTH, async (authUser) => {
@@ -63,17 +56,27 @@ function App() {
             if (authUser) {
                 const playerDoc = await getDoc(doc(FIREBASE_DB, 'players', authUser.uid));
                 if (playerDoc.exists()) {
-                    setInitialRoute('PlayerHome');  
+                    const playerData = playerDoc.data();
+
+                    // Check for notification
+                    if (playerData.notification) {
+                        setInitialRoute('YourDiscFoundNotification'); // Notification screen
+                    } else {
+                        setInitialRoute('PlayerHome'); // Default for players
+                    }
+                    setUserRole('player');
                 } else {
                     const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', authUser.uid));
                     if (storeDoc.exists()) {
-                        setInitialRoute('StoreHome');
+                        setInitialRoute('StoreHome'); // Default for stores
+                        setUserRole('store');
                     } else {
                         console.log('User role not found.');
                     }
                 }
             } else {
                 setInitialRoute(null);
+                setUserRole(null);
             }
         });
     }, []);
@@ -81,45 +84,32 @@ function App() {
     return (
         <AutocompleteDropdownContextProvider>
             <NavigationContainer>
-                <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+                <RootStack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     {user && initialRoute ? (
-                        <Stack.Screen name="Inside">
-                            {() => <InsideLayout initialRoute={initialRoute} />}
-                        </Stack.Screen>
+                        userRole === 'player' ? (
+                            <RootStack.Screen
+                                name="Inside"
+                                component={PlayerStackNavigator} // Player stack
+                            />
+                        ) : (
+                            <RootStack.Screen
+                                name="Inside"
+                                component={StoreStackNavigator} // Store stack
+                            />
+                        )
                     ) : (
                         <>
-                            <Stack.Screen name="Login" component={Login} />
-                            <Stack.Screen name="AccountSelection" component={AccountSelection} />
-                            <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
-                            <Stack.Screen name="StoreCreate" component={StoreCreate} />
+                            <RootStack.Screen name="Login" component={Login} />
+                            <RootStack.Screen name="AccountSelection" component={AccountSelection} />
+                            <RootStack.Screen name="PlayerCreate" component={PlayerCreate} />
+                            <RootStack.Screen name="StoreCreate" component={StoreCreate} />
                         </>
                     )}
-                </Stack.Navigator>
+                </RootStack.Navigator>
             </NavigationContainer>
         </AutocompleteDropdownContextProvider>
     );
 }
-
-const InsideLayout = ({ initialRoute }: { initialRoute: keyof InsideStackParamList }) => {
-    const InsideStack = createNativeStackNavigator<InsideStackParamList>();
-    return (
-        <InsideStack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-            <InsideStack.Screen name="PlayerHome" component={PlayerHome} />
-            <InsideStack.Screen name="StoreHome" component={StoreHome} />
-            <InsideStack.Screen name="StoreAddDisc" component={StoreAddDisc} />
-            <InsideStack.Screen name="Inventory" component={Inventory} />
-            <InsideStack.Screen name="StoreInventory" component={StoreInventory} />
-            <InsideStack.Screen name="AddDisc" component={AddDisc} />
-            <InsideStack.Screen name="ColorChanger" component={ColorChanger} />
-            <InsideStack.Screen name="ScannerScreen" component={ScannerScreen} />
-            {/* <InsideStack.Screen name="CustomizeDisc" component={CustomizeDisc} /> */}
-            <InsideStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
-            <InsideStack.Screen name="ProVideos" component={ProVideos} />
-            <InsideStack.Screen name="AmateurVideos" component={AmateurVideos} />
-            <InsideStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} />
-        </InsideStack.Navigator>
-    );
-};
 
 export default App;
 

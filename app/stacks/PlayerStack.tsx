@@ -1,4 +1,3 @@
-// PlayerStack.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import PlayerHome from '../screens/PlayerHome';
@@ -10,7 +9,8 @@ import ScannerScreen from '../screens/ScannerScreen';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
 import ProVideos from '../screens/ProVideos';
 import AmateurVideos from '../screens/AmateurVideos';
-import TestAutoCompleteDropdown from '../screens/TestAutoCompleteDropdown'; // Import the test screen
+import TestAutoCompleteDropdown from '../screens/TestAutoCompleteDropdown';
+import YourDiscFoundNotification from '../screens/YourDiscFoundNotification'; // Import the notification screen
 
 export type PlayerStackParamList = {
     PlayerHome: undefined;
@@ -23,7 +23,8 @@ export type PlayerStackParamList = {
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
-    TestAutoCompleteDropdown: undefined; // Add type definition for the test screen
+    TestAutoCompleteDropdown: undefined;
+    YourDiscFoundNotification: undefined; // Add the notification screen type
 };
 
 const PlayerStack = createNativeStackNavigator<PlayerStackParamList>();
@@ -40,7 +41,12 @@ export default function PlayerStackNavigator() {
             <PlayerStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
             <PlayerStack.Screen name="ProVideos" component={ProVideos} />
             <PlayerStack.Screen name="AmateurVideos" component={AmateurVideos} />
-            <PlayerStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} /> {/* Add the test screen */}
+            <PlayerStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} />
+            <PlayerStack.Screen
+                name="YourDiscFoundNotification"
+                component={YourDiscFoundNotification}
+            />
         </PlayerStack.Navigator>
     );
 }
+
