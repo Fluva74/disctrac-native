@@ -10,7 +10,7 @@ import DiscGolfVideos from '../screens/DiscGolfVideos';
 import ProVideos from '../screens/ProVideos';
 import AmateurVideos from '../screens/AmateurVideos';
 import TestAutoCompleteDropdown from '../screens/TestAutoCompleteDropdown';
-import YourDiscFoundNotification from '../screens/YourDiscFoundNotification'; // Import the notification screen
+// import YourDiscFoundNotification from '../screens/YourDiscFoundNotification'; // Import the notification screen
 
 export type PlayerStackParamList = {
     PlayerHome: undefined;
@@ -24,8 +24,17 @@ export type PlayerStackParamList = {
     ProVideos: undefined;
     AmateurVideos: undefined;
     TestAutoCompleteDropdown: undefined;
-    YourDiscFoundNotification: undefined; // Add the notification screen type
-};
+    // YourDiscFoundNotification: {
+    //     notification: {
+    //       uid: string;
+    //       name: string;
+    //       manufacturer: string;
+    //       color: string;
+    //       status: string;
+    //       notifiedAt: string;
+    //         };
+    //     };
+    };
 
 const PlayerStack = createNativeStackNavigator<PlayerStackParamList>();
 
@@ -42,10 +51,10 @@ export default function PlayerStackNavigator() {
             <PlayerStack.Screen name="ProVideos" component={ProVideos} />
             <PlayerStack.Screen name="AmateurVideos" component={AmateurVideos} />
             <PlayerStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} />
-            <PlayerStack.Screen
+            {/* <PlayerStack.Screen
                 name="YourDiscFoundNotification"
                 component={YourDiscFoundNotification}
-            />
+            /> */}
         </PlayerStack.Navigator>
     );
 }
