@@ -1,5 +1,3 @@
-//file.Inventory.tsx
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -18,16 +16,32 @@ import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/f
 import { InsideStackParamList } from '../../App';
 
 const colorToImageMap: { [key: string]: any } = {
-  blue: require('../../assets/discBlue.png'),
-  brown: require('../../assets/discBrown.png'),
-  gray: require('../../assets/discGray.png'),
-  green: require('../../assets/discGreen.png'),
-  orange: require('../../assets/discOrange.png'),
-  pink: require('../../assets/discPink.png'),
-  purple: require('../../assets/discPurple.png'),
-  red: require('../../assets/discRed.png'),
-  white: require('../../assets/discWhite.png'),
-  yellow: require('../../assets/discYellow.png'),
+  discAqua: require('../../assets/discAqua.png'),
+  discBlack: require('../../assets/discBlack.png'),
+  discBlue: require('../../assets/discBlue.png'),
+  discBrown: require('../../assets/discBrown.png'),
+  discClear: require('../../assets/discClear.png'),
+  discCream: require('../../assets/discCream.png'),
+  discDarkBlue: require('../../assets/discDarkBlue.png'),
+  discGlow: require('../../assets/discGlow.png'),
+  discGray: require('../../assets/discGray.png'),
+  discGreen: require('../../assets/discGreen.png'),
+  discHotPink: require('../../assets/discHotPink.png'),
+  discLime: require('../../assets/discLime.png'),
+  discMaroon: require('../../assets/discMaroon.png'),
+  discOrange: require('../../assets/discOrange.png'),
+  discPaleBlue: require('../../assets/discPaleBlue.png'),
+  discPaleGreen: require('../../assets/discPaleGreen.png'),
+  discPalePink: require('../../assets/discPalePink.png'),
+  discPalePurple: require('../../assets/discPalePurple.png'),
+  discPink: require('../../assets/discPink.png'),
+  discPurple: require('../../assets/discPurple.png'),
+  discRed: require('../../assets/discRed.png'),
+  discSkyBlue: require('../../assets/discSkyBlue.png'),
+  discTeal: require('../../assets/discTeal.png'),
+  discTieDye: require('../../assets/discTieDye.png'),
+  discWhite: require('../../assets/discWhite.png'),
+  discYellow: require('../../assets/discYellow.png'),
 };
 
 const Inventory = () => {
@@ -90,20 +104,12 @@ const Inventory = () => {
   };
 
   const getDiscImage = (color: string) => {
-    return colorToImageMap[color.toLowerCase()] || require('../../assets/discGray.png');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'notified':
-        return '#F44336'; // Red for notified
-      default:
-        return '#333'; // Default background color
-    }
+    const formattedColor = color.charAt(0).toLowerCase() + color.slice(1); // Format color keys
+    return colorToImageMap[formattedColor] || require('../../assets/discGray.png'); // Default to discGray if color not found
   };
 
   const renderDisc = ({ item }: { item: any }) => (
-    <TouchableOpacity style={[styles.row, { backgroundColor: getStatusColor(item.status) }]} onPress={() => handleSelectDisc(item)}>
+    <TouchableOpacity style={[styles.row, { backgroundColor: '#333' }]} onPress={() => handleSelectDisc(item)}>
       <Image source={getDiscImage(item.color)} style={styles.discThumbnail} />
       <Text style={[styles.cell, styles.nameColumn]}>{item.name}</Text>
       <Text style={[styles.cell, styles.manufacturerColumn]}>{item.manufacturer}</Text>

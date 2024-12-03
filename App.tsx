@@ -13,13 +13,27 @@ import Login from './app/screens/Login';
 export type RootStackParamList = {
   Login: undefined;
   AccountSelection: undefined;
-  Inside: undefined;
+  Inside: { screen: keyof InsideStackParamList }; // Nested navigator for Player/Store
+  PlayerCreate: undefined;
+  StoreCreate: undefined;
+  ForgotPassword: undefined;
+  
 };
 
 export type InsideStackParamList = {
-    AddDisc: undefined;
+    AddDisc: { scannedData: string };
     StoreInventory: undefined;
     StoreAddDisc: undefined;
+    PlayerHome: undefined;
+    StoreHome: undefined;
+    Inventory: undefined;
+    ColorChanger: undefined;
+    ScannerScreen: undefined;
+    CustomizeDisc: undefined;
+    DiscGolfVideos: undefined;
+    ProVideos: undefined;
+    AmateurVideos: undefined;
+    TestAutoCompleteDropdown: undefined;
     // Add other routes as needed
   };
   

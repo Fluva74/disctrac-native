@@ -15,15 +15,32 @@ import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 
 const colorToImageMap: Record<string, any> = {
-  blue: require('../../assets/discBlue.png'),
-  red: require('../../assets/discRed.png'),
-  yellow: require('../../assets/discYellow.png'),
-  green: require('../../assets/discGreen.png'),
-  pink: require('../../assets/discPink.png'),
-  purple: require('../../assets/discPurple.png'),
-  orange: require('../../assets/discOrange.png'),
-  white: require('../../assets/discWhite.png'),
-  gray: require('../../assets/discGray.png'),
+  discAqua: require('../../assets/discAqua.png'),
+  discBlack: require('../../assets/discBlack.png'),
+  discBlue: require('../../assets/discBlue.png'),
+  discBrown: require('../../assets/discBrown.png'),
+  discClear: require('../../assets/discClear.png'),
+  discCream: require('../../assets/discCream.png'),
+  discDarkBlue: require('../../assets/discDarkBlue.png'),
+  discGlow: require('../../assets/discGlow.png'),
+  discGray: require('../../assets/discGray.png'),
+  discGreen: require('../../assets/discGreen.png'),
+  discHotPink: require('../../assets/discHotPink.png'),
+  discLime: require('../../assets/discLime.png'),
+  discMaroon: require('../../assets/discMaroon.png'),
+  discOrange: require('../../assets/discOrange.png'),
+  discPaleBlue: require('../../assets/discPaleBlue.png'),
+  discPaleGreen: require('../../assets/discPaleGreen.png'),
+  discPalePink: require('../../assets/discPalePink.png'),
+  discPalePurple: require('../../assets/discPalePurple.png'),
+  discPink: require('../../assets/discPink.png'),
+  discPurple: require('../../assets/discPurple.png'),
+  discRed: require('../../assets/discRed.png'),
+  discSkyBlue: require('../../assets/discSkyBlue.png'),
+  discTeal: require('../../assets/discTeal.png'),
+  discTieDye: require('../../assets/discTieDye.png'),
+  discWhite: require('../../assets/discWhite.png'),
+  discYellow: require('../../assets/discYellow.png'),
 };
 
 interface DiscItem {
@@ -40,23 +57,19 @@ interface DiscItem {
 const StoreInventory = () => {
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
 
-  // Initialize state variables
+  // State variables
   const [notifiedDiscs, setNotifiedDiscs] = useState<DiscItem[]>([]);
   const [releasedDiscs, setReleasedDiscs] = useState<DiscItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log(`[DEBUG] Setting up Firestore listener for storeInventory`);
     const storeInventoryRef = collection(FIREBASE_DB, 'storeInventory');
 
     const unsubscribe = onSnapshot(storeInventoryRef, (querySnapshot) => {
-      console.log(`[DEBUG] Firestore data updated`);
       const allDiscs = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as DiscItem[];
-
-      console.log(`[DEBUG] Raw data:`, allDiscs);
 
       const notified = allDiscs
         .filter(
@@ -79,18 +92,12 @@ const StoreInventory = () => {
 
       const released = allDiscs.filter((disc) => disc.status === 'released');
 
-      console.log(`[DEBUG] Notified discs (sorted):`, notified);
-      console.log(`[DEBUG] Released discs:`, released);
-
       setNotifiedDiscs(notified);
       setReleasedDiscs(released);
       setLoading(false);
     });
 
-    return () => {
-      console.log(`[DEBUG] Unsubscribing from Firestore listener`);
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -104,6 +111,11 @@ const StoreInventory = () => {
       default:
         return '#333'; // Default
     }
+  };
+
+  const getDiscImage = (color: string) => {
+    const formattedColor = color.charAt(0).toLowerCase() + color.slice(1); // Ensure first letter is lowercase
+    return colorToImageMap[formattedColor] || require('../../assets/discGray.png');
   };
 
   const removeDiscFromReleased = async (discId: string) => {
@@ -141,27 +153,23 @@ const StoreInventory = () => {
     );
   };
 
-  const renderDisc = ({ item }: { item: DiscItem }, isNotified: boolean) => {
-    const discImage = colorToImageMap[item.color?.toLowerCase()] || require('../../assets/discGray.png');
-
-    return (
-      <View
-        style={[
-          styles.row,
-          isNotified && { backgroundColor: getStatusColor(item.status) },
-        ]}
-      >
-        <Image source={discImage} style={styles.discThumbnail} />
-        <Text style={[styles.cell, styles.nameColumn]}>{item.name}</Text>
-        <Text style={[styles.cell, styles.manufacturerColumn]}>{item.manufacturer}</Text>
-        {!isNotified && (
-          <TouchableOpacity onPress={() => removeDiscFromReleased(item.id)}>
-            <Text style={styles.removeText}>Remove</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
+  const renderDisc = ({ item }: { item: DiscItem }, isNotified: boolean) => (
+    <View
+      style={[
+        styles.row,
+        isNotified && { backgroundColor: getStatusColor(item.status) },
+      ]}
+    >
+      <Image source={getDiscImage(item.color)} style={styles.discThumbnail} />
+      <Text style={[styles.cell, styles.nameColumn]}>{item.name}</Text>
+      <Text style={[styles.cell, styles.manufacturerColumn]}>{item.manufacturer}</Text>
+      {!isNotified && (
+        <TouchableOpacity onPress={() => removeDiscFromReleased(item.id)}>
+          <Text style={styles.removeText}>Remove</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>

@@ -1,46 +1,34 @@
-// PlayerHome.tsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, Linking, StyleSheet } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
-import { signOut } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
-// import styles from '../styles';
 
 const PlayerHome = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
-    const [firstName, setFirstName] = useState<string>('');
+    const [firstName, setFirstName] = useState<string>('Guest');
 
     useEffect(() => {
         const fetchUserData = async () => {
             const user = FIREBASE_AUTH.currentUser;
             if (user) {
-                console.log("User UID:", user.uid);
                 try {
                     const docRef = doc(FIREBASE_DB, 'players', user.uid);
                     const docSnap = await getDoc(docRef);
 
                     if (docSnap.exists()) {
                         const userData = docSnap.data();
-                        console.log("User Data from Firestore:", userData);
                         setFirstName(userData.firstName || 'Guest');
-                    } else {
-                        console.log('No document found for this user UID in Firestore.');
-                        setFirstName('Guest');
                     }
                 } catch (error) {
                     console.error('Error fetching user data:', error);
                     Alert.alert('Error', 'Failed to load user data.');
-                    setFirstName('Guest');
                 }
-            } else {
-                console.log("No user is logged in.");
-                setFirstName('Guest');
             }
         };
         fetchUserData();
-    }, [firstName]);
+    }, []);
 
     const handleSignOut = async () => {
         try {
@@ -57,77 +45,75 @@ const PlayerHome = () => {
 
     const openLink = (url: string) => {
         Linking.openURL(url).catch((err) => {
-            console.error("Failed to open URL:", err);
-            Alert.alert("Error", "Failed to open link. Please try again.");
+            console.error('Failed to open URL:', err);
+            Alert.alert('Error', 'Failed to open link. Please try again.');
         });
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.welcomeText}>Welcome, {firstName}!</Text>
-            
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate('Inventory')}
-            >
-                <Text style={styles.buttonText}>Inventory</Text>
-            </TouchableOpacity>
-            
-            {/* Directly navigate to DiscGolfVideos */}
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('DiscGolfVideos')}>
-                <Text style={styles.buttonText}>Videos</Text>
-            </TouchableOpacity>
 
-            {/* Links */}
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink('https://www.pdga.com/tour/event/advanced')}
-            >
-                <Text style={styles.buttonText}>Upcoming Tournaments</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink('https://udisc.com/courses')}
-            >
-                <Text style={styles.buttonText}>Find Nearby Courses</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink('https://www.pdga.com/news')}
-            >
-                <Text style={styles.buttonText}>PDGA News</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink('https://www.discstore.com/')}
-            >
-                <Text style={styles.buttonText}>Shop Disc Golf Gear</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => openLink('https://www.weather.com/')}
-            >
-                <Text style={styles.buttonText}>Weather Forecast</Text>
-            </TouchableOpacity>
-
-            {/* Button to navigate to TestAutoCompleteDropdown */}
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate('ColorChanger')}
+            <View style={styles.gridContainer}>
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => navigation.navigate('Inventory')}
                 >
-                <Text style={styles.buttonText}>Color Changer</Text>
+                    <Text style={styles.gridText}>Inventory</Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => navigation.navigate('DiscGolfVideos')}
+                >
+                    <Text style={styles.gridText}>Videos</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-                style={styles.button}
-                onPress={handleSignOut}
-            >
-                <Text style={styles.buttonText}>Sign Out</Text>
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => openLink('https://www.pdga.com/tour/event/advanced')}
+                >
+                    <Text style={styles.gridText}>Upcoming Tournaments</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => openLink('https://udisc.com/courses')}
+                >
+                    <Text style={styles.gridText}>Nearby Courses</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => openLink('https://www.pdga.com/news')}
+                >
+                    <Text style={styles.gridText}>PDGA News</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => openLink('https://www.discstore.com/')}
+                >
+                    <Text style={styles.gridText}>Shop Gear</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => openLink('https://www.weather.com/')}
+                >
+                    <Text style={styles.gridText}>Weather Forecast</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.gridButton}
+                    onPress={() => navigation.navigate('ColorChanger')}
+                >
+                    <Text style={styles.gridText}>Color Changer</Text>
+                </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
         </View>
     );
@@ -135,44 +121,52 @@ const PlayerHome = () => {
 
 const styles = StyleSheet.create({
     container: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 16,
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      marginBottom: 20,
-    },
-    inputContainer: {
-      width: '80%',
-    },
-    suggestionsContainer: {
-      backgroundColor: '#FFF',
-      borderColor: '#4CAF50',
-      borderWidth: 1,
+        flex: 1,
+        backgroundColor: '#1E1E1E', // Same as the login screen background color
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center', // Center content vertically
     },
     welcomeText: {
         fontSize: 24,
         fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 20,
+        color: '#4CAF50',
+        marginBottom: 10, // Reduced spacing below title
     },
-    button: {
-        backgroundColor: '#4CAF50',
-        padding: 10,
-        borderRadius: 5,
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        marginBottom: 20, // Reduced spacing below grid
+    },
+    gridButton: {
+        backgroundColor: '#2E2E2E',
+        width: 140,
+        height: 90,
+        margin: 10, // Slightly reduced spacing between buttons
+        borderRadius: 10,
+        justifyContent: 'center',
         alignItems: 'center',
-        width: '80%',
-        marginVertical: 5,
     },
-    buttonText: {
-        color: '#FFF',
-        fontWeight: 'bold',
+    gridText: {
+        color: '#FFFFFF',
         fontSize: 16,
+        textAlign: 'center',
     },
-  });
+    signOutButton: {
+        backgroundColor: '#4CAF50', // Same color as the login button
+        borderRadius: 10,
+        padding: 15,
+        width: '80%',
+        alignItems: 'center',
+        marginTop: 20, // Adds spacing above the sign out button
+    },
+    signOutText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+});
+
 
 export default PlayerHome;
