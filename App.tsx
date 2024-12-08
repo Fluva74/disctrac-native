@@ -7,6 +7,8 @@ import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import NotificationModal from './app/screens/NotificationModal';
 import PlayerStackNavigator from './app/stacks/PlayerStack';
 import StoreStackNavigator from './app/stacks/StoreStack';
+import PlayerCreate from './app/screens/PlayerCreate';
+import StoreCreate from './app/screens/StoreCreate';
 import AccountSelection from './app/screens/AccountSelection';
 import Login from './app/screens/Login';
 
@@ -167,6 +169,8 @@ function App() {
           <>
             <RootStack.Screen name="Login" component={Login} />
             <RootStack.Screen name="AccountSelection" component={AccountSelection} />
+            <RootStack.Screen name="PlayerCreate" component={PlayerCreate} />
+            <RootStack.Screen name="StoreCreate" component={StoreCreate} />
           </>
         )}
       </RootStack.Navigator>

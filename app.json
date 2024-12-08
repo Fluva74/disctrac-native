@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "assetBundlePatterns": ["**/*"],
+    "fonts": [
+      {
+        "asset": "@expo-google-fonts/league-spartan"
+      }
+    ],
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
