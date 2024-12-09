@@ -4,16 +4,21 @@ import {
   Text,
   Alert,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   FlatList,
   Modal,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useRoute, RouteProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import ScreenTemplate from '../components/ScreenTemplate';
+import { Input } from '../components/Input';
 
 // Static imports for selected color images
 const colorImages = {
@@ -75,11 +80,12 @@ const colorSwatches = {
   discYellow: '#FFFF00',
 };
 
-type Suggestion = {
+// Add type for suggestions
+interface Suggestion {
   id: string;
   title: string;
   manufacturer: string;
-};
+}
 
 const AddDisc = () => {
   const route = useRoute<RouteProp<InsideStackParamList, 'AddDisc'>>();
@@ -156,7 +162,9 @@ const AddDisc = () => {
       await setDoc(doc(userDiscRef, `${user.uid}_${scannedData}`), newDiscDoc);
 
       Alert.alert('Success', 'Disc added to your inventory.');
-      navigation.navigate('Inventory');
+      navigation.getParent()?.navigate('BottomTabs', {
+        screen: 'Bag'
+      });
     } catch (error) {
       console.error('Error saving disc data:', error);
       Alert.alert('Error', 'Failed to save disc data.');
@@ -164,7 +172,9 @@ const AddDisc = () => {
   };
 
   const handleCancel = () => {
-    navigation.navigate('Inventory');
+    navigation.getParent()?.navigate('BottomTabs', {
+      screen: 'Bag'
+    });
   };
 
   const handleColorSelect = (selectedColor: keyof typeof colorSwatches) => {
@@ -172,56 +182,125 @@ const AddDisc = () => {
     setShowColorPicker(false);
   };
 
+  const [fontsLoaded] = useFonts({
+    LeagueSpartan_400Regular,
+    LeagueSpartan_700Bold,
+  });
+
+  // Update onChangeText handler with proper typing
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (text.length >= 2) {
+      fetchNameSuggestions(text);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Add Disc</Text>
-
-      <View style={styles.formContainer}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Name"
-            value={name}
-            onChangeText={(text) => {
-              setName(text);
-              if (text.length >= 2) {
-                fetchNameSuggestions(text);
-              } else {
-                setSuggestions([]);
-                setShowSuggestions(false);
-              }
-            }}
-          />
-          {showSuggestions && suggestions.length > 0 && (
-            <FlatList
-              data={suggestions}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleNameSelect(item.title, item.manufacturer)}>
-                  <Text style={styles.suggestionText}>{item.title}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.suggestionsList}
-            />
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Manufacturer</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Auto-filled by Name"
-            value={manufacturer}
-            editable={false}
-          />
-        </View>
-
-        <View style={styles.imageContainer}>
-          <Image source={colorImages[color] || colorImages['discWhite']} style={styles.discImage} />
-          <TouchableOpacity style={styles.editColorButton} onPress={() => setShowColorPicker(true)}>
-            <Text style={styles.editColorButtonText}>Edit Color</Text>
+    <ScreenTemplate>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={handleCancel}
+          >
+            <MaterialCommunityIcons name="close" size={24} color="#A1A1AA" />
           </TouchableOpacity>
+          <Text style={styles.title}>Add Disc</Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <Input
+              label="Name"
+              placeholder="Enter disc name"
+              value={name}
+              onChangeText={handleNameChange}
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={styles.suggestionsWrapper}>
+                <FlatList
+                  nestedScrollEnabled
+                  style={styles.suggestionsList}
+                  data={suggestions}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity 
+                      style={styles.suggestionItem}
+                      onPress={() => handleNameSelect(item.title, item.manufacturer)}
+                    >
+                      <Text style={styles.suggestionText}>{item.title}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+          </View>
+
+          <ScrollView 
+            style={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
+            <Input
+              label="Manufacturer"
+              placeholder="Auto-filled by Name"
+              value={manufacturer}
+              editable={false}
+            />
+
+            <View style={styles.imageContainer}>
+              <Image source={colorImages[color]} style={styles.discImage} />
+              <TouchableOpacity
+                onPress={() => setShowColorPicker(true)}
+              >
+                <LinearGradient
+                  colors={['#44FFA1', '#4D9FFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.editColorButton}
+                >
+                  <Text style={styles.editColorButtonText}>Edit Color</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="Plastic (Optional)"
+              placeholder="Enter plastic type"
+              value={plastic}
+              onChangeText={setPlastic}
+            />
+
+            <Input
+              label="Notes"
+              placeholder="Enter any notes"
+              value={notes}
+              onChangeText={setNotes}
+            />
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveDisc}
+              >
+                <LinearGradient
+                  colors={['#44FFA1', '#4D9FFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>Add Disc</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
 
         {showColorPicker && (
@@ -268,64 +347,95 @@ const AddDisc = () => {
             </View>
           </Modal>
         )}
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Plastic (Optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Plastic"
-            value={plastic}
-            onChangeText={setPlastic}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Notes</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Notes"
-            value={notes}
-            onChangeText={setNotes}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleSaveDisc}>
-          <Text style={styles.buttonText}>Save Disc</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </ScreenTemplate>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1c1c1c', padding: 16 },
-  header: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 20, textAlign: 'center' },
-  formContainer: { marginTop: 20 },
-  section: { marginBottom: 20 },
-  label: { color: '#fff', fontSize: 16, marginBottom: 8 },
-  input: {
-    backgroundColor: '#333',
-    color: '#fff',
-    borderRadius: 5,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#555',
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  closeButton: {
+    position: 'absolute',
+    left: 0,
+    zIndex: 1,
+  },
+  title: {
+    flex: 1,
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 40,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  formContainer: {
+    flex: 1,
+  },
+  inputContainer: {
+    zIndex: 1, // Keep suggestions dropdown above other content
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  suggestionsWrapper: {
+    maxHeight: 200,
   },
   suggestionsList: {
-    backgroundColor: '#444',
-    borderRadius: 5,
-    marginTop: 5,
-    maxHeight: 150,
+    backgroundColor: 'rgba(24, 24, 27, 0.8)',
+    borderRadius: 8,
+    marginTop: -8,
+    borderWidth: 1,
+    borderColor: '#27272A',
   },
-  suggestionText: { color: '#fff', padding: 10 },
-  imageContainer: { alignItems: 'center', marginBottom: 20 },
-  discImage: { width: 150, height: 150, resizeMode: 'contain' },
-  editColorButton: { marginTop: 10, backgroundColor: '#2196F3', padding: 10, borderRadius: 5 },
-  editColorButtonText: { color: '#fff', fontWeight: 'bold' },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272A',
+  },
+  suggestionText: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  imageContainer: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  discImage: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+  },
+  editColorButton: {
+    borderRadius: 8,
+    padding: 12,
+    paddingHorizontal: 24,
+  },
+  editColorButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    marginTop: 8,
+  },
+  buttonGradient: {
+    borderRadius: 8,
+    padding: 16,
+  },
+  buttonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
   modalContainer: { backgroundColor: '#2c2c2c', width: '80%', borderRadius: 10, padding: 16, alignItems: 'center' },
   modalHeader: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 10 },
@@ -355,10 +465,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  button: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
-  cancelButton: { backgroundColor: '#FF5252', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 },
-  cancelButtonText: { color: '#fff', fontWeight: 'bold' },
+  saveButton: {
+    width: '100%',
+  },
 });
 
 export default AddDisc;

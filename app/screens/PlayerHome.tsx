@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Linking, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import ScreenTemplate from '../components/ScreenTemplate';
+
+const { width } = Dimensions.get('window');
+const QR_SIZE = width * 0.7; // 70% of screen width
 
 const PlayerHome = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
     const [firstName, setFirstName] = useState<string>('Guest');
+    const [fontsLoaded] = useFonts({
+        LeagueSpartan_400Regular,
+        LeagueSpartan_700Bold,
+    });
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -30,143 +41,104 @@ const PlayerHome = () => {
         fetchUserData();
     }, []);
 
-    const handleSignOut = async () => {
-        try {
-            await FIREBASE_AUTH.signOut();
-            (navigation as any).reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-            });
-        } catch (error) {
-            console.error('Error signing out:', error);
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-        }
-    };
-
-    const openLink = (url: string) => {
-        Linking.openURL(url).catch((err) => {
-            console.error('Failed to open URL:', err);
-            Alert.alert('Error', 'Failed to open link. Please try again.');
-        });
-    };
+    if (!fontsLoaded) {
+        return null;
+    }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.welcomeText}>Welcome, {firstName}!</Text>
-
-            <View style={styles.gridContainer}>
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => navigation.navigate('Inventory')}
-                >
-                    <Text style={styles.gridText}>Inventory</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => navigation.navigate('DiscGolfVideos')}
-                >
-                    <Text style={styles.gridText}>Videos</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => openLink('https://www.pdga.com/tour/event/advanced')}
-                >
-                    <Text style={styles.gridText}>Upcoming Tournaments</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => openLink('https://udisc.com/courses')}
-                >
-                    <Text style={styles.gridText}>Nearby Courses</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => openLink('https://www.pdga.com/news')}
-                >
-                    <Text style={styles.gridText}>PDGA News</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => openLink('https://www.discstore.com/')}
-                >
-                    <Text style={styles.gridText}>Shop Gear</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => openLink('https://www.weather.com/')}
-                >
-                    <Text style={styles.gridText}>Weather Forecast</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.gridButton}
-                    onPress={() => navigation.navigate('ColorChanger')}
-                >
-                    <Text style={styles.gridText}>Color Changer</Text>
-                </TouchableOpacity>
+        <ScreenTemplate>
+            <View style={styles.welcomeContainer}>
+                <Text style={styles.welcomeText}>Welcome, {firstName}!</Text>
+                <Text style={styles.subtitle}>Look Up Disc</Text>
             </View>
 
-            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-        </View>
+            {/* QR Code Circle */}
+            <View style={styles.qrContainer}>
+                <View style={styles.outerCircle}>
+                    <View style={styles.innerCircle}>
+                        <MaterialCommunityIcons 
+                            name="qrcode" 
+                            size={QR_SIZE * 0.5} 
+                            color="rgba(68, 255, 161, 0.3)" 
+                        />
+                    </View>
+                </View>
+            </View>
+
+            {/* Scan Button */}
+            <LinearGradient
+                colors={['#44FFA1', '#4D9FFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+            >
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => navigation.navigate('ScannerScreen')}
+                >
+                    <Text style={styles.buttonText}>Scan QR Code</Text>
+                </TouchableOpacity>
+            </LinearGradient>
+        </ScreenTemplate>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1E1E1E', // Same as the login screen background color
-        padding: 20,
+    welcomeContainer: {
+        marginTop: '22%',
         alignItems: 'center',
-        justifyContent: 'center', // Center content vertically
     },
     welcomeText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#4CAF50',
-        marginBottom: 10, // Reduced spacing below title
+        fontFamily: 'LeagueSpartan_700Bold',
+        fontSize: 40,
+        color: '#FFFFFF',
+        // marginBottom: 4,
+        textAlign: 'center',
     },
-    gridContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
+    subtitle: {
+        fontFamily: 'LeagueSpartan_400Regular',
+        fontSize: 18,
+        color: '#A1A1AA',
+        textAlign: 'center',
+    },
+    qrContainer: {
+        flex: .8,
         justifyContent: 'center',
-        marginBottom: 20, // Reduced spacing below grid
+        alignItems: 'center',
+        marginTop: -10,
     },
-    gridButton: {
-        backgroundColor: '#2E2E2E',
-        width: 140,
-        height: 90,
-        margin: 10, // Slightly reduced spacing between buttons
-        borderRadius: 10,
+    outerCircle: {
+        width: QR_SIZE,
+        height: QR_SIZE,
+        borderRadius: QR_SIZE / 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    gridText: {
-        color: '#FFFFFF',
+    innerCircle: {
+        width: QR_SIZE - 16,
+        height: QR_SIZE - 16,
+        borderRadius: (QR_SIZE - 16) / 2,
+        borderWidth: 1,
+        borderColor: '#44FFA1',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    buttonGradient: {
+        borderRadius: 8,
+        marginBottom: 32,
+    },
+    button: {
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    buttonText: {
+        fontFamily: 'LeagueSpartan_700Bold',
+        color: '#000000',
         fontSize: 16,
         textAlign: 'center',
     },
-    signOutButton: {
-        backgroundColor: '#4CAF50', // Same color as the login button
-        borderRadius: 10,
-        padding: 15,
-        width: '80%',
-        alignItems: 'center',
-        marginTop: 20, // Adds spacing above the sign out button
-    },
-    signOutText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
 });
-
 
 export default PlayerHome;

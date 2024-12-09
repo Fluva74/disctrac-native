@@ -8,8 +8,10 @@ module.exports = function(api) {
         {
           moduleName: '@env',
           path: '.env',
-          safe: false,         // If set to true, ensures all env variables are defined in `.env.example`
-          allowUndefined: true, // Allows usage of undefined env variables
+          blacklist: null,
+          whitelist: null,
+          safe: false,
+          allowUndefined: true,
         },
       ],
     ],

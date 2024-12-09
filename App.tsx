@@ -28,16 +28,17 @@ export type InsideStackParamList = {
     StoreAddDisc: undefined;
     PlayerHome: undefined;
     StoreHome: undefined;
-    Inventory: undefined;
-    ColorChanger: undefined;
+    Inventory: { 
+        showAlert?: boolean;
+        alertMessage?: string;
+    } | undefined;
     ScannerScreen: undefined;
     CustomizeDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
-    TestAutoCompleteDropdown: undefined;
-    // Add other routes as needed
-  };
+    // Remove TestAutoCompleteDropdown and ColorChanger
+};
   
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();

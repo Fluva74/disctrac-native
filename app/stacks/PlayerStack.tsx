@@ -1,60 +1,67 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import PlayerHome from '../screens/PlayerHome';
-import Inventory from '../screens/Inventory';
 import AddDisc from '../screens/AddDisc';
-import ColorChanger from '../screens/ColorChanger';
 import ScannerScreen from '../screens/ScannerScreen';
-// import CustomizeDisc from '../screens/CustomizeDisc';
-import DiscGolfVideos from '../screens/DiscGolfVideos';
-import ProVideos from '../screens/ProVideos';
-import AmateurVideos from '../screens/AmateurVideos';
-import TestAutoCompleteDropdown from '../screens/TestAutoCompleteDropdown';
-// import YourDiscFoundNotification from '../screens/YourDiscFoundNotification'; // Import the notification screen
+import BottomTabs from '../navigation/BottomTabs';
+import Settings from '../screens/Settings';
+import Profile from '../screens/Profile';
+import EditProfile from '../screens/EditProfile';
+import Messages from '../screens/Messages';
+import MessageDetail from '../screens/MessageDetail';
 
 export type PlayerStackParamList = {
     PlayerHome: undefined;
     Details: undefined;
-    Inventory: undefined;
+    Inventory: { 
+        showAlert?: boolean;
+        alertMessage?: string;
+    } | undefined;
     AddDisc: { scannedData?: string };
-    ColorChanger: undefined;
     ScannerScreen: undefined;
     CustomizeDisc: undefined;
     DiscGolfVideos: undefined;
     ProVideos: undefined;
     AmateurVideos: undefined;
-    TestAutoCompleteDropdown: undefined;
-    // YourDiscFoundNotification: {
-    //     notification: {
-    //       uid: string;
-    //       name: string;
-    //       manufacturer: string;
-    //       color: string;
-    //       status: string;
-    //       notifiedAt: string;
-    //         };
-    //     };
+    BottomTabs: undefined;
+    Settings: undefined;
+    Profile: undefined;
+    EditProfile: {
+        profile: {
+            email?: string;
+            phone?: string;
+            pdgaNumber?: string;
+            firstName?: string;
+            lastName?: string;
+            city?: string;
+            state?: string;
+            teamName?: string;
+            avatarUrl?: string;
+            contactPreferences?: {
+                email: boolean;
+                phone: boolean;
+                inApp: boolean;
+            };
+        };
     };
+    Messages: undefined;
+    MessageDetail: {
+        messageId: string;
+    };
+};
 
 const PlayerStack = createNativeStackNavigator<PlayerStackParamList>();
 
 export default function PlayerStackNavigator() {
     return (
-        <PlayerStack.Navigator initialRouteName="PlayerHome" screenOptions={{ headerShown: false }}>
-            <PlayerStack.Screen name="PlayerHome" component={PlayerHome} />
-            <PlayerStack.Screen name="Inventory" component={Inventory} />
-            <PlayerStack.Screen name="AddDisc" component={AddDisc} />
-            <PlayerStack.Screen name="ColorChanger" component={ColorChanger} />
+        <PlayerStack.Navigator initialRouteName="BottomTabs" screenOptions={{ headerShown: false }}>
+            <PlayerStack.Screen name="BottomTabs" component={BottomTabs} />
+            <PlayerStack.Screen name="AddDisc" component={AddDisc} options={{ presentation: 'modal' }} />
             <PlayerStack.Screen name="ScannerScreen" component={ScannerScreen} />
-            {/* <PlayerStack.Screen name="CustomizeDisc" component={CustomizeDisc} /> */}
-            <PlayerStack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
-            <PlayerStack.Screen name="ProVideos" component={ProVideos} />
-            <PlayerStack.Screen name="AmateurVideos" component={AmateurVideos} />
-            <PlayerStack.Screen name="TestAutoCompleteDropdown" component={TestAutoCompleteDropdown} />
-            {/* <PlayerStack.Screen
-                name="YourDiscFoundNotification"
-                component={YourDiscFoundNotification}
-            /> */}
+            <PlayerStack.Screen name="Settings" component={Settings} options={{ presentation: 'modal' }} />
+            <PlayerStack.Screen name="Profile" component={Profile} options={{ presentation: 'modal' }} />
+            <PlayerStack.Screen name="EditProfile" component={EditProfile} options={{ presentation: 'modal' }} />
+            <PlayerStack.Screen name="Messages" component={Messages} />
+            <PlayerStack.Screen name="MessageDetail" component={MessageDetail} />
         </PlayerStack.Navigator>
     );
 }

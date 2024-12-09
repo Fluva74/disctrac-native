@@ -1,19 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ActivityIndicator,
   Alert,
   Linking,
-  ActivityIndicator,
-  StyleSheet,
   Image,
 } from 'react-native';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation, NavigationProp, useRoute, RouteProp } from '@react-navigation/native';
+import { InsideStackParamList } from '../../App';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { InsideStackParamList } from '../../App';
+import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import ScreenTemplate from '../components/ScreenTemplate';
+
+interface Disc {
+  id: string;
+  name: string;
+  manufacturer: string;
+  color: string;
+  userId?: string;
+  plastic?: string;
+  notes?: string;
+}
+
+interface InventoryRouteParams {
+  showAlert?: boolean;
+  alertMessage?: string;
+}
 
 const colorToImageMap: { [key: string]: any } = {
   discAqua: require('../../assets/discAqua.png'),
@@ -46,9 +65,16 @@ const colorToImageMap: { [key: string]: any } = {
 
 const Inventory = () => {
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
-  const [discs, setDiscs] = useState<any[]>([]);
-  const [selectedDisc, setSelectedDisc] = useState<any | null>(null); // State for the selected disc
+  const [discs, setDiscs] = useState<Disc[]>([]);
+  const [selectedDisc, setSelectedDisc] = useState<Disc | null>(null); // State for the selected disc
   const [loading, setLoading] = useState(true);
+  const [fontsLoaded] = useFonts({
+    LeagueSpartan_400Regular,
+    LeagueSpartan_700Bold,
+  });
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const route = useRoute<RouteProp<Record<string, InventoryRouteParams>, string>>();
 
   useEffect(() => {
     const user = FIREBASE_AUTH.currentUser;
@@ -57,23 +83,29 @@ const Inventory = () => {
       const q = query(userDiscsRef, where('userId', '==', user.uid));
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const discsList = querySnapshot.docs.map((doc) => ({
+        const discsList: Disc[] = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data(),
+          name: doc.data().name || '',
+          manufacturer: doc.data().manufacturer || '',
+          color: doc.data().color || '',
+          ...doc.data()
         }));
         setDiscs(discsList);
         setLoading(false);
       });
 
-      return () => unsubscribe(); // Cleanup listener on unmount
+      return () => unsubscribe();
     } else {
       setLoading(false);
     }
   }, []);
 
-  const handleSelectDisc = (disc: any) => {
-    setSelectedDisc(selectedDisc?.id === disc.id ? null : disc); // Toggle selection
-  };
+  useEffect(() => {
+    if (route.params?.showAlert && route.params?.alertMessage) {
+      setAlertMessage(route.params.alertMessage);
+      setShowAlertModal(true);
+    }
+  }, [route.params]);
 
   const handleDeleteDisc = async (discId: string) => {
     Alert.alert('Remove Disc', 'Do you want to remove this disc from your inventory?', [
@@ -108,95 +140,402 @@ const Inventory = () => {
     return colorToImageMap[formattedColor] || require('../../assets/discGray.png'); // Default to discGray if color not found
   };
 
-  const renderDisc = ({ item }: { item: any }) => (
-    <TouchableOpacity style={[styles.row, { backgroundColor: '#333' }]} onPress={() => handleSelectDisc(item)}>
-      <Image source={getDiscImage(item.color)} style={styles.discThumbnail} />
-      <Text style={[styles.cell, styles.nameColumn]}>{item.name}</Text>
-      <Text style={[styles.cell, styles.manufacturerColumn]}>{item.manufacturer}</Text>
+  const renderDiscItem = ({ item }: { item: Disc }) => (
+    <TouchableOpacity
+      style={styles.discItem}
+      onPress={() => setSelectedDisc(selectedDisc?.id === item.id ? null : item)}
+    >
+      <LinearGradient
+        colors={['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.discItemGradient}
+      >
+        <View style={styles.discImageContainer}>
+          <Image 
+            source={getDiscImage(item.color)} 
+            style={styles.discImage}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.discInfo}>
+          <Text style={styles.discName}>{item.name}</Text>
+          <Text style={styles.discManufacturer}>{item.manufacturer}</Text>
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Inventory</Text>
+  const renderSelectedDiscModal = () => {
+    if (!selectedDisc) return null;
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#4CAF50" />
-      ) : discs.length === 0 ? (
-        <Text style={styles.noDiscsText}>You have no discs in your bag.</Text>
-      ) : (
-        <FlatList
-          data={discs}
-          renderItem={renderDisc}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, styles.imageColumn]}>Disc</Text>
-              <Text style={[styles.headerCell, styles.nameColumn]}>Name</Text>
-              <Text style={[styles.headerCell, styles.manufacturerColumn]}>Manufacturer</Text>
+    return (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={() => setSelectedDisc(null)}
+          >
+            <MaterialCommunityIcons name="close" size={24} color="#A1A1AA" />
+          </TouchableOpacity>
+
+          <View style={styles.modalHeader}>
+            <Image 
+              source={getDiscImage(selectedDisc.color)} 
+              style={styles.modalDiscImage}
+              resizeMode="contain"
+            />
+            <View style={styles.modalDiscInfo}>
+              <Text style={styles.modalDiscName}>{selectedDisc.name}</Text>
+              <Text style={styles.modalDiscManufacturer}>{selectedDisc.manufacturer}</Text>
             </View>
-          }
-        />
-      )}
+          </View>
 
-      {/* Card for the selected disc */}
-      {selectedDisc && (
-        <View style={styles.card}>
-          <Image source={getDiscImage(selectedDisc.color)} style={styles.discImage} />
-          <Text style={styles.cardText}>Name: {selectedDisc.name}</Text>
-          <Text style={styles.cardText}>Manufacturer: {selectedDisc.manufacturer}</Text>
-          <Text style={styles.cardText}>Color: {selectedDisc.color}</Text>
+          {selectedDisc.plastic && (
+            <View style={styles.modalDetailRow}>
+              <Text style={styles.modalDetailLabel}>Plastic:</Text>
+              <Text style={styles.modalDetailText}>{selectedDisc.plastic}</Text>
+            </View>
+          )}
+
+          {selectedDisc.notes && (
+            <View style={styles.modalDetailRow}>
+              <Text style={styles.modalDetailLabel}>Notes:</Text>
+              <Text style={styles.modalDetailText}>{selectedDisc.notes}</Text>
+            </View>
+          )}
+
           <TouchableOpacity
-            style={styles.cardButton}
+            style={styles.watchButton}
             onPress={() => handleWatchReviews(selectedDisc.manufacturer, selectedDisc.name)}
           >
-            <Text style={styles.cardButtonText}>Watch Disc Reviews</Text>
+            <LinearGradient
+              colors={['#44FFA1', '#4D9FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.watchButtonGradient}
+            >
+              <MaterialCommunityIcons name="youtube" size={24} color="#000000" />
+              <Text style={styles.watchButtonText}>Watch Reviews</Text>
+            </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.cardButton} onPress={() => handleDeleteDisc(selectedDisc.id)}>
-            <Text style={styles.cardButtonText}>Remove Disc</Text>
+
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => handleDeleteDisc(selectedDisc.id)}
+          >
+            <MaterialCommunityIcons name="trash-can" size={24} color="#A1A1AA" />
+            <Text style={styles.removeButtonText}>Remove Disc</Text>
           </TouchableOpacity>
         </View>
-      )}
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={[styles.button, styles.homeButton]} onPress={navigateToHome}>
-          <Text style={styles.buttonText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('ScannerScreen')}>
-          <Text style={styles.buttonText}>Add Disc</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    );
+  };
+
+  const renderAlertModal = () => {
+    if (!showAlertModal) return null;
+
+    return (
+      <View style={styles.modalOverlay}>
+        <View style={styles.alertModalContent}>
+          <Text style={styles.alertModalTitle}>Info</Text>
+          <Text style={styles.alertModalMessage}>{alertMessage}</Text>
+          <TouchableOpacity
+            style={styles.alertModalButton}
+            onPress={() => setShowAlertModal(false)}
+          >
+            <LinearGradient
+              colors={['#44FFA1', '#4D9FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.alertModalButtonGradient}
+            >
+              <Text style={styles.alertModalButtonText}>OK</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <ScreenTemplate>
+      <View style={styles.content}>
+        <Text style={styles.title}>Inventory</Text>
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#44FFA1" style={styles.loader} />
+        ) : discs.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>You have no discs in your bag.</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => navigation.navigate('ScannerScreen')}
+            >
+              <Text style={styles.addButtonText}>Add Your First Disc</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              data={discs}
+              renderItem={renderDiscItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+            />
+            <View style={styles.bottomButtonContainer}>
+              <TouchableOpacity
+                style={styles.addDiscButton}
+                onPress={() => navigation.navigate('ScannerScreen')}
+              >
+                <LinearGradient
+                  colors={['#44FFA1', '#4D9FFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.addDiscButtonGradient}
+                >
+                  <Text style={styles.addDiscButtonText}>Add Disc</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+        {renderSelectedDiscModal()}
+        {renderAlertModal()}
+      </View>
+    </ScreenTemplate>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1c1c1c', padding: 16 },
-  header: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: '#FFF', marginBottom: 20 },
-  tableHeader: { flexDirection: 'row', marginBottom: 10, borderBottomWidth: 1, borderColor: '#555' },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#333' },
-  discThumbnail: { width: 40, height: 40, marginRight: 10 },
-  cell: { flex: 1, color: '#FFF', textAlign: 'center' },
-  headerCell: { flex: 1, color: '#FFF', textAlign: 'center', fontWeight: 'bold' },
-  imageColumn: { flex: 0.5 },
-  nameColumn: { flex: 1 },
-  manufacturerColumn: { flex: 1 },
-  buttonContainer: { flexDirection: 'row', marginTop: 20 },
-  button: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, margin: 5, alignItems: 'center' },
-  homeButton: { backgroundColor: '#2196F3' },
-  buttonText: { color: '#FFF', fontWeight: 'bold' },
-  noDiscsText: { color: '#FFF', textAlign: 'center', marginTop: 20 },
-  card: {
-    backgroundColor: '#333',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+    marginTop: '22%',
   },
-  cardText: { color: '#FFF', fontSize: 16, marginBottom: 10 },
-  cardButton: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 5, marginTop: 10 },
-  cardButtonText: { color: '#FFF', fontWeight: 'bold' },
-  discImage: { width: 100, height: 100, marginBottom: 10 },
+  title: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 40,
+    color: '#FFFFFF',
+    marginBottom: 32,
+  },
+  discItem: {
+    marginBottom: 12,
+  },
+  discItemGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(24, 24, 27, 0.5)',
+  },
+  discImageContainer: {
+    width: 40,
+    height: 40,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  discImage: {
+    width: '100%',
+    height: '100%',
+  },
+  discInfo: {
+    flex: 1,
+  },
+  discName: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  discManufacturer: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  loader: {
+    flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#A1A1AA',
+    marginBottom: 24,
+  },
+  addButton: {
+    backgroundColor: '#44FFA1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  addButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(39, 39, 42, 0.8)',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    zIndex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalDiscImage: {
+    width: 64,
+    height: 64,
+    marginRight: 16,
+  },
+  modalDiscInfo: {
+    flex: 1,
+  },
+  modalDiscName: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  modalDiscManufacturer: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#A1A1AA',
+  },
+  watchButton: {
+    marginBottom: 12,
+  },
+  watchButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  watchButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+  },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(39, 39, 42, 0.8)',
+    gap: 8,
+  },
+  removeButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#A1A1AA',
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 32,
+    left: 16,
+    right: 16,
+  },
+  addDiscButton: {
+    width: '100%',
+  },
+  addDiscButtonGradient: {
+    borderRadius: 8,
+    padding: 16,
+  },
+  addDiscButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  modalDetailLabel: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#A1A1AA',
+    width: 80,
+  },
+  modalDetailText: {
+    flex: 1,
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  alertModalContent: {
+    width: '80%',
+    backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(39, 39, 42, 0.8)',
+    alignItems: 'center',
+  },
+  alertModalTitle: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  alertModalMessage: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#A1A1AA',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  alertModalButton: {
+    width: '100%',
+  },
+  alertModalButtonGradient: {
+    borderRadius: 8,
+    padding: 16,
+  },
+  alertModalButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
+  },
 });
 
 export default Inventory;
