@@ -64,6 +64,7 @@ const styles = StyleSheet.create({
     fontSize: 40,
     color: '#FFFFFF',
     marginBottom: 32,
+    textAlign: 'center',
   },
   settingItem: {
     padding: 16,

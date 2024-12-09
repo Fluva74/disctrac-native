@@ -30,8 +30,8 @@ const StoreAddDisc = () => {
   const fetchDiscData = async (scannedCode: string) => {
     setLoading(true);
     try {
-      const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
-      const q = query(userDiscsRef, where('uid', '==', scannedCode));
+      const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
+      const q = query(playerDiscsRef, where('uid', '==', scannedCode));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
@@ -61,12 +61,9 @@ const StoreAddDisc = () => {
       if (discData) {
         const { userId, uid, name, manufacturer, color } = discData;
   
-        console.log(`[DEBUG] Notifying player for disc: ${uid}`);
-  
-        // Update user inventory
-        const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', `${userId}_${uid}`);
+        // Update player inventory
+        const playerDiscRef = doc(FIREBASE_DB, 'playerDiscs', `${userId}_${uid}`);
         await updateDoc(playerDiscRef, { status: 'notified' });
-        console.log(`[DEBUG] Updated user inventory for disc: ${uid}`);
   
         // Add to store inventory
         const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', uid);
@@ -79,10 +76,9 @@ const StoreAddDisc = () => {
           userId,
           notifiedAt: new Date().toISOString(),
         });
-        console.log(`[DEBUG] Added disc to store inventory with status: notifiedPlayer`);
   
         // Start the timer for store inventory
-        startTimer(uid, userId, uid); // Pass discId, userId, and uid
+        startTimer(uid, userId, uid);
   
         // Add notification for the player
         const playerNotificationRef = doc(FIREBASE_DB, 'players', userId);
@@ -96,13 +92,12 @@ const StoreAddDisc = () => {
             notifiedAt: new Date().toISOString(),
           },
         });
-        console.log(`[DEBUG] Added notification for player: ${userId}`);
   
         Alert.alert('Success', 'Player notified and disc added to store inventory.');
         navigation.navigate('StoreInventory');
       }
     } catch (error) {
-      console.error(`[ERROR] Failed to notify player:`, error);
+      console.error('Error notifying player:', error);
       Alert.alert('Error', 'Failed to notify player.');
     }
   };
@@ -136,7 +131,7 @@ const StoreAddDisc = () => {
           await updateDoc(discRef, { status: 'released' });
   
           // Remove the disc from the player's inventory
-          const playerDiscRef = doc(FIREBASE_DB, 'userDiscs', `${userId}_${uid}`);
+          const playerDiscRef = doc(FIREBASE_DB, 'playerDiscs', `${userId}_${uid}`);
           await deleteDoc(playerDiscRef);
           console.log(`[DEBUG] Disc ${discId} removed from player's inventory`);
         }

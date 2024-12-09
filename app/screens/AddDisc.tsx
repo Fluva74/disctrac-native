@@ -90,7 +90,7 @@ interface Suggestion {
 const AddDisc = () => {
   const route = useRoute<RouteProp<InsideStackParamList, 'AddDisc'>>();
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
-  const scannedData = route.params?.scannedData;
+  const { scannedData } = route.params;
 
   // State variables
   const [name, setName] = useState('');
@@ -101,38 +101,66 @@ const AddDisc = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const fetchNameSuggestions = useCallback(async (text: string) => {
-    if (!text) {
+    if (!text || text.length < 2) {
       setSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
     try {
-      const discsCollection = collection(FIREBASE_DB, 'discs');
-      const q = query(
-        discsCollection,
-        where('name', '>=', text),
-        where('name', '<=', text + '\uf8ff')
-      );
-      const querySnapshot = await getDocs(q);
+      const discsRef = collection(FIREBASE_DB, 'discs');
+      const lowercaseText = text.toLowerCase();
+      
+      const querySnapshot = await getDocs(discsRef);
+      
+      const fetchedSuggestions = querySnapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          // Only process docs that have the required data
+          if (!data?.name) return null;
+          
+          return {
+            id: doc.id,
+            title: data.name,
+            manufacturer: data.manufacturer
+          };
+        })
+        .filter((suggestion): suggestion is Suggestion => {
+          // Remove null values and filter by search text
+          return suggestion !== null && 
+                 suggestion.title.toLowerCase().includes(lowercaseText);
+        });
 
-      const fetchedSuggestions = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        title: doc.data().name,
-        manufacturer: doc.data().manufacturer,
-      }));
-
+      console.log(`Found ${fetchedSuggestions.length} matches for "${text}"`);
+      
       setSuggestions(fetchedSuggestions);
-      setShowSuggestions(true);
-    } catch (error) {
-      console.error('Error fetching name suggestions:', error);
+      setShowSuggestions(fetchedSuggestions.length > 0);
+    } catch (error: unknown) {
+      console.error('Error fetching suggestions:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   }, []);
 
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (text.length >= 2) {
+      fetchNameSuggestions(text);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
   const handleNameSelect = (selectedName: string, selectedManufacturer: string) => {
     setName(selectedName);
-    setManufacturer(selectedManufacturer); // Auto-populate manufacturer
+    setManufacturer(selectedManufacturer);
     setShowSuggestions(false);
   };
 
@@ -149,22 +177,27 @@ const AddDisc = () => {
         return;
       }
 
-      const userDiscRef = collection(FIREBASE_DB, 'userDiscs');
+      const playerDiscRef = collection(FIREBASE_DB, 'playerDiscs');
       const newDiscDoc = {
         uid: scannedData,
         userId: user.uid,
-        name,
+        name: name.toLowerCase(),
         manufacturer,
         color,
         plastic,
         notes,
+        createdAt: new Date().toISOString(),
       };
-      await setDoc(doc(userDiscRef, `${user.uid}_${scannedData}`), newDiscDoc);
+      
+      await setDoc(doc(playerDiscRef, `${user.uid}_${scannedData}`), newDiscDoc);
+      setShowSuccessModal(true);
 
-      Alert.alert('Success', 'Disc added to your inventory.');
-      navigation.getParent()?.navigate('BottomTabs', {
-        screen: 'Bag'
-      });
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        navigation.getParent()?.navigate('BottomTabs', {
+          screen: 'Bag'
+        });
+      }, 2000);
     } catch (error) {
       console.error('Error saving disc data:', error);
       Alert.alert('Error', 'Failed to save disc data.');
@@ -186,17 +219,6 @@ const AddDisc = () => {
     LeagueSpartan_400Regular,
     LeagueSpartan_700Bold,
   });
-
-  // Update onChangeText handler with proper typing
-  const handleNameChange = (text: string) => {
-    setName(text);
-    if (text.length >= 2) {
-      fetchNameSuggestions(text);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
 
   if (!fontsLoaded) {
     return null;
@@ -347,6 +369,32 @@ const AddDisc = () => {
             </View>
           </Modal>
         )}
+
+        {showSuccessModal && (
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={showSuccessModal}
+          >
+            <View style={styles.successModalOverlay}>
+              <View style={styles.successModalContainer}>
+                <Text style={styles.successModalTitle}>Success</Text>
+                <Text style={styles.successModalMessage}>Disc added to your inventory.</Text>
+                <TouchableOpacity 
+                  style={styles.okButton}
+                  onPress={() => {
+                    setShowSuccessModal(false);
+                    navigation.getParent()?.navigate('BottomTabs', {
+                      screen: 'Bag'
+                    });
+                  }}
+                >
+                  <Text style={styles.okButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
       </View>
     </ScreenTemplate>
   );
@@ -437,7 +485,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
-  modalContainer: { backgroundColor: '#2c2c2c', width: '80%', borderRadius: 10, padding: 16, alignItems: 'center' },
+  modalContainer: { backgroundColor: 'rgba(24, 24, 27, 0.95)', width: '80%', borderRadius: 10, padding: 16, alignItems: 'center' },
   modalHeader: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 10 },
   colorSwatch: { width: 40, height: 40, borderRadius: 20, margin: 5, alignItems: 'center', justifyContent: 'center' },
   glowSwatch: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#D0FF14', shadowColor: '#D0FF14', shadowOpacity: 0.8, shadowRadius: 15 },
@@ -467,6 +515,40 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     width: '100%',
+  },
+  successModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // backgroundColor: 'rgba(24, 24, 27, 0.95)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  successModalContainer: {
+    backgroundColor: 'rgba(24, 24, 27, 0.95)', // Dark, semi-transparent background
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 300,
+  },
+  successModalTitle: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  successModalMessage: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#A1A1AA',
+    marginBottom: 16,
+  },
+  okButton: {
+    alignSelf: 'flex-end',
+  },
+  okButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    color: '#44FFA1',
+    fontSize: 16,
   },
 });
 

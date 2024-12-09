@@ -126,17 +126,17 @@ const styles = StyleSheet.create({
     },
     buttonGradient: {
         borderRadius: 8,
-        marginBottom: 32,
+        padding: 16,
+        width: '60%',
+        alignSelf: 'center',
     },
     button: {
-        height: 48,
-        justifyContent: 'center',
         alignItems: 'center',
     },
     buttonText: {
         fontFamily: 'LeagueSpartan_700Bold',
-        color: '#000000',
         fontSize: 16,
+        color: '#000000',
         textAlign: 'center',
     },
 });

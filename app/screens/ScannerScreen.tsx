@@ -3,7 +3,7 @@ import { View, Text, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 
 const ScannerScreen = () => {
@@ -27,6 +27,7 @@ const ScannerScreen = () => {
           screen: 'Bag',
           params: {
             showAlert: true,
+            alertTitle: 'Error',
             alertMessage: 'No user is logged in.'
           }
         });
@@ -34,19 +35,22 @@ const ScannerScreen = () => {
       }
 
       const userId = user.uid;
-      const discsCollection = collection(FIREBASE_DB, 'userDiscs');
-      const q = query(discsCollection, where('uid', '==', data));
-      const querySnapshot = await getDocs(q);
 
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        const discData = doc.data();
+      // First check playerDiscs collection
+      const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
+      const playerDiscsQuery = query(playerDiscsRef, where('uid', '==', data));
+      const playerDiscsSnapshot = await getDocs(playerDiscsQuery);
 
+      if (!playerDiscsSnapshot.empty) {
+        // Disc exists in playerDiscs collection
+        const discData = playerDiscsSnapshot.docs[0].data();
+        
         if (discData.userId === userId) {
           navigation.getParent()?.navigate('BottomTabs', {
             screen: 'Bag',
             params: {
               showAlert: true,
+              alertTitle: 'Already Added',
               alertMessage: 'This disc is already in your bag.'
             }
           });
@@ -55,18 +59,40 @@ const ScannerScreen = () => {
             screen: 'Bag',
             params: {
               showAlert: true,
+              alertTitle: 'Disc Unavailable',
               alertMessage: 'This disc is already in another player\'s bag.'
             }
           });
         }
+        return;
+      }
+
+      // If we get here, the disc isn't in any player's bag
+      // Check if it exists in the buildQrCodes collection
+      const buildQrCodesRef = collection(FIREBASE_DB, 'buildQrCodes');
+      const buildQrCodesQuery = query(buildQrCodesRef, where('devId', '==', data));
+      const buildQrCodesSnapshot = await getDocs(buildQrCodesQuery);
+
+      if (buildQrCodesSnapshot.empty) {
+        navigation.getParent()?.navigate('BottomTabs', {
+          screen: 'Bag',
+          params: {
+            showAlert: true,
+            alertTitle: 'Invalid Disc',
+            alertMessage: 'This QR code is not associated with any disc.'
+          }
+        });
       } else {
         navigation.navigate('AddDisc', { scannedData: data });
       }
+
     } catch (error) {
+      console.error('Scan error:', error);
       navigation.getParent()?.navigate('BottomTabs', {
         screen: 'Bag',
         params: {
           showAlert: true,
+          alertTitle: 'Error',
           alertMessage: 'Failed to check disc assignment.'
         }
       });

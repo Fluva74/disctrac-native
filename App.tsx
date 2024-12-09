@@ -23,21 +23,24 @@ export type RootStackParamList = {
 };
 
 export type InsideStackParamList = {
-    AddDisc: { scannedData: string };
-    StoreInventory: undefined;
-    StoreAddDisc: undefined;
-    PlayerHome: undefined;
-    StoreHome: undefined;
-    Inventory: { 
-        showAlert?: boolean;
-        alertMessage?: string;
-    } | undefined;
-    ScannerScreen: undefined;
-    CustomizeDisc: undefined;
-    DiscGolfVideos: undefined;
-    ProVideos: undefined;
-    AmateurVideos: undefined;
-    // Remove TestAutoCompleteDropdown and ColorChanger
+  AddDisc: {
+    scannedData: string;
+  };
+  StoreInventory: undefined;
+  StoreAddDisc: undefined;
+  PlayerHome: undefined;
+  StoreHome: undefined;
+  Inventory: {
+    showAlert?: boolean;
+    alertMessage?: string;
+    alertTitle?: string;
+  };
+  ScannerScreen: undefined;
+  CustomizeDisc: undefined;
+  DiscGolfVideos: undefined;
+  ProVideos: undefined;
+  AmateurVideos: undefined;
+  // Remove TestAutoCompleteDropdown and ColorChanger
 };
   
 
@@ -96,34 +99,24 @@ function App() {
   // Listener for Firestore updates
   useEffect(() => {
     if (user && userRole === 'player') {
-      const playerRef = doc(FIREBASE_DB, 'players', user.uid);
-  
-      const unsubscribeListener = onSnapshot(playerRef, (docSnapshot) => {
+      const unsubscribeListener = onSnapshot(doc(FIREBASE_DB, 'players', user.uid), (docSnapshot) => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
-  
+
           if (data.notification) {
             const { status } = data.notification;
-  
-            // Debug log to confirm the status update
-            console.log(`[DEBUG] Notification status: ${status}`);
-  
             let modalMessage = 'Your Disc Has Been Found!';
             let modalImage =
               colorToImageMap[data.notification.color.toLowerCase()] ||
               require('./assets/discGray.png');
-  
-            // Handle specific statuses
+
             if (status === 'criticalAlert') {
               modalMessage = 'Oh No, Your Disc Will Be Released Soon!';
-              console.log('[DEBUG] Showing criticalAlert notification');
             } else if (status === 'released') {
               modalMessage = 'Sorry, Your Disc Has Been Released';
               modalImage = require('./assets/sadFace.png');
-              console.log('[DEBUG] Showing released notification');
             }
-  
-            // Always update modal state
+
             setNotification({
               ...data.notification,
               modalMessage,
@@ -133,7 +126,7 @@ function App() {
           }
         }
       });
-  
+
       return () => unsubscribeListener();
     }
   }, [user, userRole]);

@@ -1,5 +1,5 @@
 // PlayerCreate.tsx
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, FlatList, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -7,6 +7,9 @@ import { RootStackParamList } from '../../App';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import { Ionicons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
+import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 const US_STATES = [
   { name: 'Alabama', abbreviation: 'AL' },
@@ -87,6 +90,57 @@ const PlayerCreate = () => {
     state.abbreviation.toLowerCase().includes(stateSearch.toLowerCase())
   );
 
+  const [username, setUsername] = useState('');
+
+  const handleSignUp = async () => {
+    try {
+      if (!formData.email || !formData.password || !username || !formData.firstName || !formData.lastName) {
+        Alert.alert('Error', 'Please fill in all required fields.');
+        return;
+      }
+
+      // Create the user account
+      const userCredential = await createUserWithEmailAndPassword(
+        FIREBASE_AUTH,
+        formData.email,
+        formData.password
+      );
+
+      // Create the player document in Firestore
+      const playerRef = doc(FIREBASE_DB, 'players', userCredential.user.uid);
+      await setDoc(playerRef, {
+        username,
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        pdgaNumber: formData.pdgaNumber,
+        city: formData.city,
+        state: formData.state,
+        teamName: '',
+        phone: '',
+        contactPreferences: {
+          email: true,
+          phone: true,
+          inApp: true,
+        },
+        createdAt: new Date().toISOString(),
+      });
+
+      // Navigation will be handled by the auth state change listener in App.tsx
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert('Error', 'This email is already registered.');
+      } else if (error.code === 'auth/invalid-email') {
+        Alert.alert('Error', 'Invalid email address.');
+      } else if (error.code === 'auth/weak-password') {
+        Alert.alert('Error', 'Password should be at least 6 characters.');
+      } else {
+        Alert.alert('Error', 'Failed to create account. Please try again.');
+      }
+    }
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -106,6 +160,17 @@ const PlayerCreate = () => {
       {/* Form */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Username*</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter username"
+              placeholderTextColor="#A1A1AA"
+              value={username}
+              onChangeText={setUsername}
+            />
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>First Name</Text>
             <TextInput
@@ -256,7 +321,7 @@ const PlayerCreate = () => {
             end={{ x: 1, y: 0 }}
             style={styles.gradient}
           >
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={handleSignUp}>
               <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -322,12 +387,12 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
-    fontFamily: 'LeagueSpartan_400Regular',
+    fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 14,
-    color: '#A1A1AA',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   input: {
@@ -352,8 +417,9 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: 'LeagueSpartan_700Bold',
-    color: '#000000',
     fontSize: 16,
+    color: '#000000',
+    textAlign: 'center',
   },
   navbar: {
     flexDirection: 'row',
@@ -449,8 +515,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A1A1AA',
   },
-  
-  
+  signUpButton: {
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  gradientButton: {
+    borderRadius: 8,
+    padding: 16,
+  },
 });
 
 export default PlayerCreate;

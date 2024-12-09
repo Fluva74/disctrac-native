@@ -29,8 +29,8 @@ const EditProfile = () => {
   const [pdgaNumber, setPdgaNumber] = useState(profile.pdgaNumber || '');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [contactPreferences, setContactPreferences] = useState({
-    email: profile.contactPreferences?.email ?? false,
-    phone: profile.contactPreferences?.phone ?? false,
+    email: profile.email ? (profile.contactPreferences?.email ?? false) : false,
+    phone: profile.phone ? (profile.contactPreferences?.phone ?? false) : false,
     inApp: profile.contactPreferences?.inApp ?? true,
   });
   const [showRequiredModal, setShowRequiredModal] = useState(false);
@@ -125,17 +125,34 @@ const EditProfile = () => {
 
   const handleContactPreferenceChange = (type: 'email' | 'phone' | 'inApp') => {
     setContactPreferences(prev => {
+      // If trying to toggle email but no email exists
+      if (type === 'email' && !email) {
+        Alert.alert('Email Required', 'Please add an email address to enable email contact.');
+        return prev;
+      }
+
+      // If trying to toggle phone but no phone exists
+      if (type === 'phone' && !phone) {
+        Alert.alert('Phone Required', 'Please add a phone number to enable phone contact.');
+        return prev;
+      }
+
       const newPreferences = {
         ...prev,
         [type]: !prev[type]
       };
 
-      // Check if this change would result in all options being unchecked
+      // If trying to uncheck in-app messaging and no other method is selected
+      if (type === 'inApp' && !newPreferences.inApp && 
+          !newPreferences.email && !newPreferences.phone) {
+        setShowRequiredModal(true);
+        return prev;
+      }
+
+      // If trying to uncheck the last selected method
       const anyMethodSelected = newPreferences.email || 
                               newPreferences.phone || 
                               newPreferences.inApp;
-
-      // If no method would be selected, show styled modal
       if (!anyMethodSelected) {
         setShowRequiredModal(true);
         return prev;
@@ -212,69 +229,100 @@ const EditProfile = () => {
       </Text>
 
       <TouchableOpacity
-        style={styles.preferenceItem}
+        style={[
+          styles.preferenceItem,
+          !email && styles.preferenceItemDisabled
+        ]}
         onPress={() => handleContactPreferenceChange('email')}
+        disabled={!email}
       >
         <LinearGradient
-          colors={contactPreferences.email 
-            ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
-            : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
+          colors={!email 
+            ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
+            : contactPreferences.email 
+              ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
+              : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.preferenceGradient}
         >
           <View style={styles.preferenceContent}>
-            <Text style={styles.preferenceText}>Email Contact</Text>
+            <Text style={[
+              styles.preferenceText,
+              !email && styles.preferenceTextDisabled
+            ]}>
+              Email Contact
+            </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.email ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={contactPreferences.email ? "#44FFA1" : "#A1A1AA"} 
+              color={!email ? "#52525B" : contactPreferences.email ? "#44FFA1" : "#A1A1AA"} 
             />
           </View>
         </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.preferenceItem}
+        style={[
+          styles.preferenceItem,
+          !phone && styles.preferenceItemDisabled
+        ]}
         onPress={() => handleContactPreferenceChange('phone')}
+        disabled={!phone}
       >
         <LinearGradient
-          colors={contactPreferences.phone 
-            ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
-            : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
+          colors={!phone 
+            ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
+            : contactPreferences.phone 
+              ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
+              : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.preferenceGradient}
         >
           <View style={styles.preferenceContent}>
-            <Text style={styles.preferenceText}>Phone Contact</Text>
+            <Text style={[
+              styles.preferenceText,
+              !phone && styles.preferenceTextDisabled
+            ]}>
+              Phone Contact
+            </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.phone ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={contactPreferences.phone ? "#44FFA1" : "#A1A1AA"} 
+              color={!phone ? "#52525B" : contactPreferences.phone ? "#44FFA1" : "#A1A1AA"} 
             />
           </View>
         </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.preferenceItem}
+        style={[
+          styles.preferenceItem,
+          !contactPreferences.inApp && styles.preferenceItemDisabled
+        ]}
         onPress={() => handleContactPreferenceChange('inApp')}
+        disabled={!contactPreferences.inApp}
       >
         <LinearGradient
-          colors={contactPreferences.inApp 
-            ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
-            : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
+          colors={!contactPreferences.inApp 
+            ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
+            : ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.preferenceGradient}
         >
           <View style={styles.preferenceContent}>
-            <Text style={styles.preferenceText}>In-App Messaging</Text>
+            <Text style={[
+              styles.preferenceText,
+              !contactPreferences.inApp && styles.preferenceTextDisabled
+            ]}>
+              In-App Messaging
+            </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.inApp ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={contactPreferences.inApp ? "#44FFA1" : "#A1A1AA"} 
+              color={!contactPreferences.inApp ? "#52525B" : "#44FFA1"} 
             />
           </View>
         </LinearGradient>
@@ -478,6 +526,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 2,
     borderColor: '#09090B',
+  },
+  preferenceItemDisabled: {
+    opacity: 0.5,
+  },
+  preferenceTextDisabled: {
+    color: '#52525B',
   },
 });
 

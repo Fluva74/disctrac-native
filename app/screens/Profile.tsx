@@ -27,7 +27,7 @@ const Profile = () => {
       }
 
       // Fetch disc count
-      const discsRef = collection(FIREBASE_DB, 'userDiscs');
+      const discsRef = collection(FIREBASE_DB, 'playerDiscs');
       const q = query(discsRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       setDiscCount(querySnapshot.size);

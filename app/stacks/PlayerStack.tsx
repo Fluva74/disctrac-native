@@ -15,6 +15,7 @@ export type PlayerStackParamList = {
     Inventory: { 
         showAlert?: boolean;
         alertMessage?: string;
+        alertTitle?: string;
     } | undefined;
     AddDisc: { scannedData?: string };
     ScannerScreen: undefined;

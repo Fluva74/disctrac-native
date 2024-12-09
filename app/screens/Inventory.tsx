@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp, useRoute, RouteProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc, onSnapshot, QuerySnapshot, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import ScreenTemplate from '../components/ScreenTemplate';
 
@@ -32,6 +32,7 @@ interface Disc {
 interface InventoryRouteParams {
   showAlert?: boolean;
   alertMessage?: string;
+  alertTitle?: string;
 }
 
 const colorToImageMap: { [key: string]: any } = {
@@ -74,16 +75,17 @@ const Inventory = () => {
   });
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [alertTitle, setAlertTitle] = useState('');
   const route = useRoute<RouteProp<Record<string, InventoryRouteParams>, string>>();
 
   useEffect(() => {
     const user = FIREBASE_AUTH.currentUser;
     if (user) {
-      const userDiscsRef = collection(FIREBASE_DB, 'userDiscs');
-      const q = query(userDiscsRef, where('userId', '==', user.uid));
+      const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
+      const q = query(playerDiscsRef, where('userId', '==', user.uid));
 
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const discsList: Disc[] = querySnapshot.docs.map((doc) => ({
+      const unsubscribe = onSnapshot(q, (querySnapshot: QuerySnapshot<DocumentData>) => {
+        const discsList: Disc[] = querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
           id: doc.id,
           name: doc.data().name || '',
           manufacturer: doc.data().manufacturer || '',
@@ -103,6 +105,7 @@ const Inventory = () => {
   useEffect(() => {
     if (route.params?.showAlert && route.params?.alertMessage) {
       setAlertMessage(route.params.alertMessage);
+      setAlertTitle(route.params?.alertTitle || 'Info');
       setShowAlertModal(true);
     }
   }, [route.params]);
@@ -114,7 +117,7 @@ const Inventory = () => {
         text: 'Yes',
         onPress: async () => {
           try {
-            await deleteDoc(doc(FIREBASE_DB, 'userDiscs', discId));
+            await deleteDoc(doc(FIREBASE_DB, 'playerDiscs', discId));
             setSelectedDisc(null);
           } catch (error) {
             console.error('Error deleting disc:', error);
@@ -238,8 +241,16 @@ const Inventory = () => {
     return (
       <View style={styles.modalOverlay}>
         <View style={styles.alertModalContent}>
-          <Text style={styles.alertModalTitle}>Info</Text>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={() => setShowAlertModal(false)}
+          >
+            <MaterialCommunityIcons name="close" size={24} color="#A1A1AA" />
+          </TouchableOpacity>
+          
+          <Text style={styles.alertModalTitle}>{alertTitle}</Text>
           <Text style={styles.alertModalMessage}>{alertMessage}</Text>
+          
           <TouchableOpacity
             style={styles.alertModalButton}
             onPress={() => setShowAlertModal(false)}
@@ -265,7 +276,9 @@ const Inventory = () => {
   return (
     <ScreenTemplate>
       <View style={styles.content}>
-        <Text style={styles.title}>Inventory</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>What's in Your Bag?</Text>
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#44FFA1" style={styles.loader} />
@@ -276,7 +289,14 @@ const Inventory = () => {
               style={styles.addButton}
               onPress={() => navigation.navigate('ScannerScreen')}
             >
-              <Text style={styles.addButtonText}>Add Your First Disc</Text>
+              <LinearGradient
+                colors={['#44FFA1', '#4D9FFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.addButtonGradient}
+              >
+                <Text style={styles.addButtonText}>Add Your First Disc</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : (
@@ -317,11 +337,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: '22%',
   },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
   title: {
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 40,
     color: '#FFFFFF',
-    marginBottom: 32,
+    textAlign: 'center',
   },
   discItem: {
     marginBottom: 12,
@@ -376,15 +400,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   addButton: {
-    backgroundColor: '#44FFA1',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    width: '60%',
+  },
+  addButtonGradient: {
     borderRadius: 8,
+    padding: 16,
   },
   addButtonText: {
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 16,
     color: '#000000',
+    textAlign: 'center',
   },
   modalOverlay: {
     position: 'absolute',
@@ -502,19 +528,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   alertModalContent: {
-    width: '80%',
+    width: '100%',
     backgroundColor: 'rgba(24, 24, 27, 0.95)',
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(39, 39, 42, 0.8)',
-    alignItems: 'center',
   },
   alertModalTitle: {
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 24,
     color: '#FFFFFF',
     marginBottom: 16,
+    textAlign: 'center',
   },
   alertModalMessage: {
     fontFamily: 'LeagueSpartan_400Regular',
@@ -524,7 +550,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   alertModalButton: {
-    width: '100%',
+    width: '60%',
+    alignSelf: 'center',
   },
   alertModalButtonGradient: {
     borderRadius: 8,

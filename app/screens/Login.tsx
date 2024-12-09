@@ -7,9 +7,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { RootStackParamList } from '../../App';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -21,7 +22,29 @@ const Login = () => {
   const signIn = async () => {
     setLoading(true);
     try {
-      const response = await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
+      const isEmail = usernameOrEmail.includes('@');
+      let emailToUse = usernameOrEmail;
+
+      if (!isEmail) {
+        const playersRef = collection(FIREBASE_DB, 'players');
+        const q = query(playersRef, where('username', '==', usernameOrEmail.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          const storesRef = collection(FIREBASE_DB, 'stores');
+          const storeQuery = query(storesRef, where('username', '==', usernameOrEmail.toLowerCase()));
+          const storeSnapshot = await getDocs(storeQuery);
+
+          if (storeSnapshot.empty) {
+            throw new Error('Username not found');
+          }
+          emailToUse = storeSnapshot.docs[0].data().email;
+        } else {
+          emailToUse = querySnapshot.docs[0].data().email;
+        }
+      }
+
+      const response = await signInWithEmailAndPassword(FIREBASE_AUTH, emailToUse, password);
       const user = response.user;
 
       let userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
@@ -63,14 +86,14 @@ const Login = () => {
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Username or Email</Text>
             <TextInput
-              value={email}
+              value={usernameOrEmail}
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Enter your username or email"
               placeholderTextColor="#666666"
               autoCapitalize="none"
-              onChangeText={setEmail}
+              onChangeText={setUsernameOrEmail}
             />
           </View>
 

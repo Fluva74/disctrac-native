@@ -99,9 +99,10 @@ const styles = StyleSheet.create({
         width: '100%',
         gap: 70,
         marginTop: 70,
+        alignItems: 'center',
     },
     buttonWrapper: {
-        width: '100%',
+        width: '60%',
     },
     buttonGradient: {
         borderRadius: 8,
