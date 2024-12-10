@@ -1,69 +1,69 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import BottomTabs from '../navigation/BottomTabs';
 import AddDisc from '../screens/AddDisc';
 import ScannerScreen from '../screens/ScannerScreen';
-import BottomTabs from '../navigation/BottomTabs';
 import Settings from '../screens/Settings';
 import Profile from '../screens/Profile';
 import EditProfile from '../screens/EditProfile';
 import Messages from '../screens/Messages';
 import MessageDetail from '../screens/MessageDetail';
+import NewMessage from '../screens/NewMessage';
+import DiscGolfVideos from '../screens/DiscGolfVideos';
+import ProVideos from '../screens/ProVideos';
+import AmateurVideos from '../screens/AmateurVideos';
+import { InsideStackParamList } from '../../App';
 
 export type PlayerStackParamList = {
-    PlayerHome: undefined;
-    Details: undefined;
-    Inventory: { 
-        showAlert?: boolean;
-        alertMessage?: string;
-        alertTitle?: string;
-    } | undefined;
-    AddDisc: { scannedData?: string };
-    ScannerScreen: undefined;
-    CustomizeDisc: undefined;
-    DiscGolfVideos: undefined;
-    ProVideos: undefined;
-    AmateurVideos: undefined;
-    BottomTabs: undefined;
-    Settings: undefined;
-    Profile: undefined;
-    EditProfile: {
-        profile: {
-            email?: string;
-            phone?: string;
-            pdgaNumber?: string;
-            firstName?: string;
-            lastName?: string;
-            city?: string;
-            state?: string;
-            teamName?: string;
-            avatarUrl?: string;
-            contactPreferences?: {
-                email: boolean;
-                phone: boolean;
-                inApp: boolean;
-            };
-        };
+  BottomTabs: undefined;
+  AddDisc: { scannedData?: string };
+  ScannerScreen: undefined;
+  Settings: undefined;
+  Profile: undefined;
+  EditProfile: {
+    profile: {
+      email?: string;
+      phone?: string;
+      pdgaNumber?: string;
+      firstName?: string;
+      lastName?: string;
+      city?: string;
+      state?: string;
+      teamName?: string;
+      avatarUrl?: string;
+      contactPreferences?: {
+        email: boolean;
+        phone: boolean;
+        inApp: boolean;
+      };
     };
-    Messages: undefined;
-    MessageDetail: {
-        messageId: string;
-    };
+  };
+  Messages: undefined;
+  MessageDetail: { messageId: string };
+  NewMessage: undefined;
+  DiscGolfVideos: undefined;
+  ProVideos: undefined;
+  AmateurVideos: undefined;
 };
 
-const PlayerStack = createNativeStackNavigator<PlayerStackParamList>();
+const Stack = createNativeStackNavigator<InsideStackParamList>();
 
 export default function PlayerStackNavigator() {
-    return (
-        <PlayerStack.Navigator initialRouteName="BottomTabs" screenOptions={{ headerShown: false }}>
-            <PlayerStack.Screen name="BottomTabs" component={BottomTabs} />
-            <PlayerStack.Screen name="AddDisc" component={AddDisc} options={{ presentation: 'modal' }} />
-            <PlayerStack.Screen name="ScannerScreen" component={ScannerScreen} />
-            <PlayerStack.Screen name="Settings" component={Settings} options={{ presentation: 'modal' }} />
-            <PlayerStack.Screen name="Profile" component={Profile} options={{ presentation: 'modal' }} />
-            <PlayerStack.Screen name="EditProfile" component={EditProfile} options={{ presentation: 'modal' }} />
-            <PlayerStack.Screen name="Messages" component={Messages} />
-            <PlayerStack.Screen name="MessageDetail" component={MessageDetail} />
-        </PlayerStack.Navigator>
-    );
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BottomTabs" component={BottomTabs} />
+      <Stack.Screen name="AddDisc" component={AddDisc} />
+      <Stack.Screen name="ScannerScreen" component={ScannerScreen} />
+      <Stack.Screen name="Settings" component={Settings} />
+      <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="EditProfile" component={EditProfile} />
+      <Stack.Screen name="Messages" component={Messages} />
+      <Stack.Screen name="MessageDetail" component={MessageDetail} />
+      <Stack.Screen name="NewMessage" component={NewMessage} />
+      <Stack.Screen name="DiscGolfVideos" component={DiscGolfVideos} />
+      <Stack.Screen name="ProVideos" component={ProVideos} />
+      <Stack.Screen name="AmateurVideos" component={AmateurVideos} />
+    </Stack.Navigator>
+  );
 }
 

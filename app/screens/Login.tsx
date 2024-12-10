@@ -49,11 +49,11 @@ const Login = () => {
 
       let userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
       if (userDoc.exists()) {
-        navigation.navigate('Inside', { screen: 'PlayerHome' });
+        navigation.navigate('PlayerStack');
       } else {
         userDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
         if (userDoc.exists()) {
-          navigation.navigate('Inside', { screen: 'StoreHome' });
+          navigation.navigate('StoreStack');
         } else {
           alert('User data not found.');
         }

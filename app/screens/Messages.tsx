@@ -1,100 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity
+} from 'react-native';
 import ScreenTemplate from '../components/ScreenTemplate';
+import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import { useMessages } from '../contexts/MessageContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { formatDistanceToNow } from 'date-fns';
+import type { Message, Conversation } from '../contexts/MessageContext';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
-
-interface Message {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  discId?: string;
-  message: string;
-  timestamp: any;
-  read: boolean;
-  type: 'message' | 'alert';
-  senderName?: string;
-}
+import { FIREBASE_AUTH } from '../../FirebaseConfig';
+import { formatMessageTimestamp } from '../utils/dateUtils';
 
 const Messages = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
-  const currentUser = FIREBASE_AUTH.currentUser;
+  const { messages, markAsRead } = useMessages();
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [fontsLoaded] = useFonts({
+    LeagueSpartan_400Regular,
+    LeagueSpartan_700Bold,
+  });
 
-  useEffect(() => {
-    if (!currentUser) return;
+  // Group messages into conversations
+  const conversations = React.useMemo(() => {
+    const currentUser = FIREBASE_AUTH.currentUser;
+    if (!currentUser) return [];
 
-    const messagesRef = collection(FIREBASE_DB, 'messages');
-    const q = query(
-      messagesRef,
-      where('receiverId', '==', currentUser.uid),
-      orderBy('timestamp', 'desc')
-    );
+    const conversationMap = new Map<string, Conversation>();
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const messageList: Message[] = [];
-      snapshot.forEach((doc) => {
-        messageList.push({ id: doc.id, ...doc.data() } as Message);
-      });
-      setMessages(messageList);
+    messages.forEach(message => {
+      const isCurrentUserSender = message.senderId === currentUser.uid;
+      const otherUserId = isCurrentUserSender ? message.receiverId : message.senderId;
+      const otherUserName = message.senderName || 'Unknown User';
+
+      // Create a unique conversation ID
+      const conversationId = [currentUser.uid, otherUserId].sort().join('_');
+
+      const existing = conversationMap.get(conversationId);
+      const existingTime = existing?.timestamp?.toDate?.()?.getTime() || 0;
+      const messageTime = message.timestamp?.toDate?.()?.getTime() || 0;
+
+      if (!existing || existingTime < messageTime) {
+        conversationMap.set(conversationId, {
+          id: conversationId,
+          otherUserId,
+          otherUserName,
+          lastMessage: message.message,
+          timestamp: message.timestamp,
+          createdAt: message.createdAt,
+          unread: !message.read && !isCurrentUserSender
+        });
+      }
     });
 
-    return () => unsubscribe();
-  }, [currentUser]);
+    return Array.from(conversationMap.values()).sort((a, b) => {
+      const timeA = a.timestamp?.toDate?.()?.getTime() || 0;
+      const timeB = b.timestamp?.toDate?.()?.getTime() || 0;
+      return timeB - timeA;
+    });
+  }, [messages]);
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('MessageDetail', { messageId: item.id })}
-    >
-      <LinearGradient
-        colors={item.read 
-          ? ['rgba(68, 255, 161, 0.1)', 'rgba(77, 159, 255, 0.1)']
-          : ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[
-          styles.messageItem,
-          !item.read && styles.unreadMessage
-        ]}
+  React.useEffect(() => {
+    if (messages) {
+      setLoading(false);
+    }
+  }, [messages]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  const renderConversation = ({ item }: { item: Conversation }) => {
+    const timestamp = formatMessageTimestamp(item.timestamp, item.createdAt);
+
+    return (
+      <TouchableOpacity
+        style={[styles.messageContainer, item.unread && styles.unreadMessage]}
+        onPress={() => navigation.navigate('MessageDetail', { messageId: item.id })}
       >
-        <View style={styles.messageHeader}>
-          <Text style={styles.senderName}>{item.senderName || 'Unknown'}</Text>
-          <Text style={styles.timestamp}>
-            {new Date(item.timestamp?.toDate()).toLocaleDateString()}
-          </Text>
-        </View>
-        <Text style={styles.messagePreview} numberOfLines={2}>
-          {item.message}
-        </Text>
-        {item.type === 'alert' && (
-          <View style={styles.alertBadge}>
-            <Text style={styles.alertText}>Alert</Text>
+        <LinearGradient
+          colors={['rgba(68, 255, 161, 0.1)', 'rgba(77, 159, 255, 0.1)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.messageContainer}
+        >
+          <View style={styles.messageContent}>
+            <View style={styles.messageHeader}>
+              <View style={styles.senderInfo}>
+                <MaterialCommunityIcons
+                  name="message"
+                  size={24}
+                  color="#44FFA1"
+                />
+                <Text style={styles.senderName}>{item.otherUserName}</Text>
+              </View>
+              <Text style={styles.timestamp}>{timestamp}</Text>
+            </View>
+            <Text style={styles.messageText} numberOfLines={1}>
+              {item.lastMessage}
+            </Text>
           </View>
-        )}
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScreenTemplate>
       <View style={styles.container}>
-        <Text style={styles.pageTitle}>Messages</Text>
-        {messages.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No messages yet</Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>Messages</Text>
+        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#44FFA1" />
           </View>
         ) : (
           <FlatList
-            data={messages}
-            renderItem={renderMessage}
+            data={conversations}
+            renderItem={renderConversation}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.listContent,
+              conversations.length === 0 && styles.emptyListContent
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => setRefreshing(false)}
+                tintColor="#44FFA1"
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons 
+                  name="message-text-outline" 
+                  size={48} 
+                  color="#44FFA1" 
+                  style={styles.emptyIcon}
+                />
+                <Text style={styles.emptyText}>No messages yet</Text>
+              </View>
+            }
           />
         )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('NewMessage')}
+          style={styles.fabButton}
+        >
+          <LinearGradient
+            colors={['#44FFA1', '#4D9FFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fabGradient}
+          >
+            <MaterialCommunityIcons name="message-plus" size={28} color="#000000" />
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     </ScreenTemplate>
   );
@@ -103,70 +174,106 @@ const Messages = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#09090B',
   },
-  pageTitle: {
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  title: {
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 32,
     color: '#FFFFFF',
-    textAlign: 'center',
-    marginVertical: 16,
   },
   listContent: {
     padding: 16,
-    gap: 12,
   },
-  messageItem: {
-    padding: 16,
+  emptyListContent: {
+    flexGrow: 1,
+  },
+  messageContainer: {
+    marginBottom: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(68, 255, 161, 0.2)',
+    overflow: 'hidden',
   },
-  unreadMessage: {
-    borderColor: 'rgba(68, 255, 161, 0.4)',
+  messageContent: {
+    padding: 16,
   },
   messageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  senderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   senderName: {
     fontFamily: 'LeagueSpartan_700Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   timestamp: {
     fontFamily: 'LeagueSpartan_400Regular',
-    fontSize: 14,
+    fontSize: 12,
     color: '#A1A1AA',
   },
-  messagePreview: {
+  messageText: {
     fontFamily: 'LeagueSpartan_400Regular',
-    fontSize: 14,
+    fontSize: 16,
     color: '#FFFFFF',
   },
-  alertBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#44FFA1',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  unreadMessage: {
+    backgroundColor: 'rgba(68, 255, 161, 0.05)',
   },
-  alertText: {
-    fontFamily: 'LeagueSpartan_700Bold',
-    fontSize: 12,
-    color: '#000000',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 32,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+    opacity: 0.5,
   },
   emptyText: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
     color: '#A1A1AA',
+    textAlign: 'center',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

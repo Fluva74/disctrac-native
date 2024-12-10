@@ -126,7 +126,12 @@ const PlayerCreate = () => {
         createdAt: new Date().toISOString(),
       });
 
-      // Navigation will be handled by the auth state change listener in App.tsx
+      // Explicitly navigate to PlayerStack after successful signup
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'PlayerStack' }],
+      });
+
     } catch (error: any) {
       console.error('Sign up error:', error);
       if (error.code === 'auth/email-already-in-use') {
