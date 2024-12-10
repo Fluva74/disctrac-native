@@ -13,6 +13,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<PlayerProfile>({});
   const [discCount, setDiscCount] = useState(0);
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
+  const [username, setUsername] = useState<string>('Profile');
 
   const fetchProfileAndDiscs = async () => {
     const user = FIREBASE_AUTH.currentUser;
@@ -24,6 +25,7 @@ const Profile = () => {
         // Log the data to see what we're getting
         console.log('Profile Data:', docSnap.data());
         setProfile(docSnap.data() as PlayerProfile);
+        setUsername(docSnap.data().username || 'Profile');
       }
 
       // Fetch disc count
@@ -61,8 +63,8 @@ const Profile = () => {
     if (!profile.contactPreferences) return null;
 
     const methods = [];
-    if (profile.contactPreferences.email) methods.push('Email');
-    if (profile.contactPreferences.phone) methods.push('Phone');
+    if (profile.contactPreferences.email && profile.email) methods.push('Email');
+    if (profile.contactPreferences.phone && profile.phone) methods.push('Phone');
     if (profile.contactPreferences.inApp) methods.push('In-App');
 
     if (methods.length === 0) return null;
@@ -78,7 +80,7 @@ const Profile = () => {
   return (
     <ScreenTemplate>
       <View style={styles.container}>
-        <Text style={styles.pageTitle}>Profile</Text>
+        <Text style={styles.title}>@{username}</Text>
         
         <View style={styles.avatarContainer}>
           {profile.avatarUrl ? (
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  pageTitle: {
+  title: {
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 32,
     color: '#FFFFFF',

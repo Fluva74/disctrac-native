@@ -13,19 +13,30 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import type { Message } from '../contexts/MessageContext';
 import * as Haptics from 'expo-haptics';
+import ScreenTemplate from '../components/ScreenTemplate';
+import { doc, getDoc } from 'firebase/firestore';
+import { FIREBASE_DB } from '../../FirebaseConfig';
 
 type MessageDetailRouteProp = RouteProp<PlayerStackParamList, 'MessageDetail'>;
 
+interface ReceiverInfo {
+  id: string;
+  name: string;
+  discName?: string;
+  initialMessage?: string;
+}
+
 const MessageDetail = () => {
   const route = useRoute<MessageDetailRouteProp>();
-  const { messageId } = route.params;
-  const { messages, sendMessage, deleteMessage } = useMessages();
+  const navigation = useNavigation();
+  const { messageId, receiverInfo } = route.params;
+  const { messages, sendMessage, deleteMessage, deleteConversation, markAsRead } = useMessages();
   const [replyText, setReplyText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -91,11 +102,9 @@ const MessageDetail = () => {
           onPress: async () => {
             try {
               await deleteMessage(message.id);
-              // Optional: Add success haptic
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error('Error deleting message:', error);
-              // Optional: Add error haptic
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
           },
@@ -139,49 +148,150 @@ const MessageDetail = () => {
     </TouchableOpacity>
   );
 
-  return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <FlatList
-        ref={flatListRef}
-        data={conversationMessages}
-        renderItem={renderMessage}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[
-          styles.messagesList,
-          { paddingBottom: keyboardHeight > 0 ? keyboardHeight : 16 }
-        ]}
-        inverted
-      />
+  // Add state for other user's name
+  const [otherUserName, setOtherUserName] = useState<string>('');
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={replyText}
-          onChangeText={setReplyText}
-          placeholder="Type your message..."
-          placeholderTextColor="#A1A1AA"
-          multiline
-        />
-        <TouchableOpacity
-          onPress={handleSend}
-          disabled={!replyText.trim()}
-          style={styles.sendButton}
+  // Add useEffect to fetch other user's name
+  useEffect(() => {
+    const fetchOtherUserName = async () => {
+      if (!currentUser || !otherUserId) return;
+      
+      try {
+        const userDoc = await getDoc(doc(FIREBASE_DB, 'players', otherUserId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setOtherUserName(userData.username || 'Unknown User');
+        }
+      } catch (error) {
+        console.error('Error fetching user name:', error);
+        setOtherUserName('Unknown User');
+      }
+    };
+
+    fetchOtherUserName();
+  }, [currentUser, otherUserId]);
+
+  // Add this useEffect to mark messages as read when viewing them
+  useEffect(() => {
+    if (!currentUser || !otherUserId) return;
+
+    // Mark unread messages in this conversation as read
+    const unreadMessages = messages.filter(msg => 
+      !msg.read && 
+      msg.receiverId === currentUser.uid &&
+      msg.senderId === otherUserId
+    );
+
+    unreadMessages.forEach(msg => {
+      markAsRead(msg.id);
+    });
+  }, [messages, currentUser, otherUserId]);
+
+  // When component mounts, if we have disc info, auto-send the first message
+  useEffect(() => {
+    const sendInitialMessage = async () => {
+      if (!messages.length && receiverInfo?.discName && otherUserId && currentUser) {
+        const initialMessage = `Hello! I found your ${receiverInfo.discName} disc!`;
+        try {
+          await sendMessage(otherUserId, initialMessage);
+          console.log('Initial message sent successfully');
+        } catch (error) {
+          console.error('Error sending initial message:', error);
+        }
+      }
+    };
+
+    sendInitialMessage();
+  }, [messages, receiverInfo, otherUserId, currentUser, sendMessage]); // Include all dependencies
+
+  return (
+    <ScreenTemplate>
+      {/* Add Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          <LinearGradient
-            colors={['#44FFA1', '#4D9FFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.sendButtonGradient}
-          >
-            <MaterialCommunityIcons name="send" size={24} color="#000000" />
-          </LinearGradient>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerName}>{receiverInfo?.name || 'Chat'}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => {
+            Alert.alert(
+              'Conversation Options',
+              'What would you like to do?',
+              [
+                {
+                  text: 'Delete Conversation',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteConversation(messageId);
+                      navigation.goBack();
+                    } catch (error) {
+                      console.error('Error deleting conversation:', error);
+                      Alert.alert('Error', 'Failed to delete conversation');
+                    }
+                  },
+                },
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+              ]
+            );
+          }}
+        >
+          <MaterialCommunityIcons name="dots-vertical" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={conversationMessages}
+          renderItem={renderMessage}
+          keyExtractor={item => item.id}
+          contentContainerStyle={[
+            styles.messagesList,
+            { paddingBottom: keyboardHeight > 0 ? keyboardHeight : 16 }
+          ]}
+          inverted
+        />
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={replyText}
+            onChangeText={setReplyText}
+            placeholder="Type your message..."
+            placeholderTextColor="#A1A1AA"
+            multiline
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!replyText.trim()}
+            style={styles.sendButton}
+          >
+            <LinearGradient
+              colors={['#44FFA1', '#4D9FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.sendButtonGradient}
+            >
+              <MaterialCommunityIcons name="send" size={24} color="#000000" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </ScreenTemplate>
   );
 };
 
@@ -251,6 +361,31 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(68, 255, 161, 0.2)',
+    backgroundColor: '#09090B',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerName: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  menuButton: {
+    padding: 8,
   },
 });
 

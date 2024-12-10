@@ -6,10 +6,24 @@ import Inventory from '../screens/Inventory';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
 import Resources from '../screens/Resources';
 import Messages from '../screens/Messages';
+import ProVideos from '../screens/ProVideos';
+import AmateurVideos from '../screens/AmateurVideos';
+import { useMessages } from '../contexts/MessageContext';
+import { FIREBASE_AUTH } from '../../FirebaseConfig';
 
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabs() {
+  const { messages } = useMessages();
+  const unreadCount = React.useMemo(() => {
+    const currentUser = FIREBASE_AUTH.currentUser;
+    if (!currentUser) return 0;
+    
+    return messages.filter(msg => 
+      msg.receiverId === currentUser.uid && !msg.read
+    ).length;
+  }, [messages]);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -41,6 +55,20 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
+        name="ProVideos"
+        component={ProVideos}
+        options={{
+          tabBarButton: () => null, // This hides the tab but keeps the screen accessible
+        }}
+      />
+      <Tab.Screen
+        name="AmateurVideos"
+        component={AmateurVideos}
+        options={{
+          tabBarButton: () => null, // This hides the tab but keeps the screen accessible
+        }}
+      />
+      <Tab.Screen
         name="Bag"
         component={Inventory}
         options={{
@@ -65,6 +93,11 @@ export default function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="message" color={color} size={size} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#44FFA1',
+            color: '#000000',
+          },
         }}
       />
     </Tab.Navigator>

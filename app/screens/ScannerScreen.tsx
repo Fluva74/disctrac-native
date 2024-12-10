@@ -5,11 +5,34 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
+import { DiscFoundModal } from '../components/modals';
+import { InvalidQRModal } from '../components/modals';
+import { AddDiscConfirmationModal } from '../components/modals';
 
 const ScannerScreen = () => {
   const [hasPermission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
+  const [showDiscFoundModal, setShowDiscFoundModal] = useState(false);
+  const [foundDiscData, setFoundDiscData] = useState<{
+    ownerName: string;
+    userId: string;
+    discId: string;
+    discDetails: {
+      name: string;
+      manufacturer: string;
+      color: string;
+    };
+    contactInfo: {
+      email?: string;
+      phone?: string;
+      inApp: boolean;
+      preferredMethod: 'email' | 'phone' | 'inApp';
+    };
+  } | null>(null);
+  const [showInvalidQRModal, setShowInvalidQRModal] = useState(false);
+  const [showAddDiscModal, setShowAddDiscModal] = useState(false);
+  const [scannedQRData, setScannedQRData] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (!hasPermission) {
@@ -55,14 +78,27 @@ const ScannerScreen = () => {
             }
           });
         } else {
-          navigation.getParent()?.navigate('BottomTabs', {
-            screen: 'Bag',
-            params: {
-              showAlert: true,
-              alertTitle: 'Disc Unavailable',
-              alertMessage: 'This disc is already in another player\'s bag.'
+          // Get owner's name
+          const ownerDoc = await getDoc(doc(FIREBASE_DB, 'players', discData.userId));
+          const ownerData = ownerDoc.exists() ? ownerDoc.data() : null;
+          
+          setFoundDiscData({
+            ownerName: ownerData?.username || 'Unknown Player',
+            userId: discData.userId,
+            discId: discData.uid,
+            discDetails: {
+              name: discData.name,
+              manufacturer: discData.manufacturer,
+              color: discData.color
+            },
+            contactInfo: {
+              email: ownerData?.email,
+              phone: ownerData?.phone,
+              inApp: true,
+              preferredMethod: ownerData?.contactPreferences?.preferred || 'inApp'
             }
           });
+          setShowDiscFoundModal(true);
         }
         return;
       }
@@ -74,16 +110,12 @@ const ScannerScreen = () => {
       const buildQrCodesSnapshot = await getDocs(buildQrCodesQuery);
 
       if (buildQrCodesSnapshot.empty) {
-        navigation.getParent()?.navigate('BottomTabs', {
-          screen: 'Bag',
-          params: {
-            showAlert: true,
-            alertTitle: 'Invalid Disc',
-            alertMessage: 'This QR code is not associated with any disc.'
-          }
-        });
+        setShowInvalidQRModal(true);
+        return;
       } else {
-        navigation.navigate('AddDisc', { scannedData: data });
+        setScannedQRData(data);
+        setShowAddDiscModal(true);
+        return;
       }
 
     } catch (error) {
@@ -133,6 +165,75 @@ const ScannerScreen = () => {
           </Text>
         </View>
       )}
+
+      {foundDiscData && (
+        <DiscFoundModal
+          visible={showDiscFoundModal}
+          onClose={() => {
+            setShowDiscFoundModal(false);
+            setFoundDiscData(null);
+            navigation.getParent()?.navigate('BottomTabs', {
+              screen: 'Home'
+            });
+          }}
+          onNotifyOwner={() => {
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser) return;
+            
+            const conversationId = [currentUser.uid, foundDiscData.userId]
+              .sort()
+              .join('_');
+
+            setShowDiscFoundModal(false);
+            setFoundDiscData(null);
+
+            navigation.navigate('MessageDetail', {
+              messageId: conversationId,
+              receiverInfo: {
+                id: foundDiscData.userId,
+                name: foundDiscData.ownerName,
+                discName: foundDiscData.discDetails.name
+              }
+            });
+          }}
+          ownerName={foundDiscData.ownerName}
+          userId={foundDiscData.userId}
+          discDetails={{
+            id: foundDiscData.discId,
+            name: foundDiscData.discDetails.name,
+            manufacturer: foundDiscData.discDetails.manufacturer,
+            color: foundDiscData.discDetails.color
+          }}
+          contactInfo={foundDiscData.contactInfo}
+        />
+      )}
+
+      <InvalidQRModal
+        visible={showInvalidQRModal}
+        onClose={() => {
+          setShowInvalidQRModal(false);
+          navigation.getParent()?.navigate('BottomTabs', {
+            screen: 'Home'
+          });
+        }}
+      />
+
+      <AddDiscConfirmationModal
+        visible={showAddDiscModal}
+        onClose={() => {
+          setShowAddDiscModal(false);
+          setScannedQRData(null);
+          navigation.getParent()?.navigate('BottomTabs', {
+            screen: 'Home'
+          });
+        }}
+        onAddDisc={() => {
+          setShowAddDiscModal(false);
+          if (scannedQRData) {
+            navigation.navigate('AddDisc', { scannedData: scannedQRData });
+          }
+        }}
+      />
     </View>
   );
 };

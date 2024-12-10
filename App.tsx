@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from './app/contexts/AuthContext';
 import { MessageProvider } from './app/contexts/MessageContext';
+import { NotificationProvider, useNotifications } from './app/contexts/NotificationContext';
 
 // Import all screens
 import Login from './app/screens/Login';
@@ -12,6 +13,7 @@ import PlayerCreate from './app/screens/PlayerCreate';
 import StoreCreate from './app/screens/StoreCreate';
 import PlayerStackNavigator from './app/stacks/PlayerStack';
 import StoreStackNavigator from './app/stacks/StoreStack';
+import NotificationModal from './app/components/modals/NotificationModal';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -61,7 +63,15 @@ export type InsideStackParamList = {
     };
   };
   Messages: undefined;
-  MessageDetail: { messageId: string };
+  MessageDetail: { 
+    messageId: string;
+    receiverInfo?: {
+      id: string;
+      name: string;
+      discName?: string;
+      initialMessage?: string;
+    };
+  };
   NewMessage: undefined;
 };
 
@@ -103,14 +113,40 @@ function RootNavigator() {
   );
 }
 
+// Wrap the app with NotificationProvider
 export default function App() {
   return (
     <AuthProvider>
-      <MessageProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </MessageProvider>
+      <NotificationProvider>
+        <MessageProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+          <NotificationOverlay />
+        </MessageProvider>
+      </NotificationProvider>
     </AuthProvider>
+  );
+}
+
+// Create NotificationOverlay component
+function NotificationOverlay() {
+  const { currentNotification, dismissNotification, handleReleaseDisc } = useNotifications();
+  console.log('NotificationOverlay render, currentNotification:', currentNotification);
+
+  if (!currentNotification) {
+    console.log('No current notification to show');
+    return null;
+  }
+
+  console.log('Showing notification modal for:', currentNotification.discName);
+  return (
+    <NotificationModal
+      visible={true}  // Force this to true since we have a notification
+      onClose={dismissNotification}
+      onReleaseDisc={() => handleReleaseDisc(currentNotification.discId)}
+      discName={currentNotification.discName}
+      company={currentNotification.company}
+    />
   );
 }

@@ -14,7 +14,7 @@ const QR_SIZE = width * 0.7; // 70% of screen width
 
 const PlayerHome = () => {
     const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
-    const [firstName, setFirstName] = useState<string>('Guest');
+    const [username, setUsername] = useState<string>('');
     const [fontsLoaded] = useFonts({
         LeagueSpartan_400Regular,
         LeagueSpartan_700Bold,
@@ -30,7 +30,7 @@ const PlayerHome = () => {
 
                     if (docSnap.exists()) {
                         const userData = docSnap.data();
-                        setFirstName(userData.firstName || 'Guest');
+                        setUsername(userData.username || 'Guest');
                     }
                 } catch (error) {
                     console.error('Error fetching user data:', error);
@@ -48,7 +48,7 @@ const PlayerHome = () => {
     return (
         <ScreenTemplate>
             <View style={styles.welcomeContainer}>
-                <Text style={styles.welcomeText}>Welcome, {firstName}!</Text>
+                <Text style={styles.welcomeText}>Welcome, @{username}!</Text>
                 <Text style={styles.subtitle}>Look Up Disc</Text>
             </View>
 

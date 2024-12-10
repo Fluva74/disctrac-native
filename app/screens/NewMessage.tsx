@@ -10,8 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FIREBASE_DB } from '../../FirebaseConfig';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { useMessages } from '../contexts/MessageContext';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -20,8 +20,6 @@ import { PlayerStackParamList } from '../stacks/PlayerStack';
 interface User {
   id: string;
   username: string;
-  firstName: string;
-  lastName: string;
 }
 
 const NewMessage = () => {
@@ -35,32 +33,47 @@ const NewMessage = () => {
   const { sendMessage } = useMessages();
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      const usersRef = collection(FIREBASE_DB, 'players');
-      const querySnapshot = await getDocs(usersRef);
-      const usersList = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          username: data.username || 'unknown',
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-        };
-      }) as User[];
-      setUsers(usersList);
-      setFilteredUsers(usersList);
-      setLoading(false);
+    const searchUsers = async (searchTerm: string) => {
+      try {
+        const usersRef = collection(FIREBASE_DB, 'players');
+        const q = query(
+          usersRef,
+          where('username', '>=', searchTerm.toLowerCase()),
+          where('username', '<=', searchTerm.toLowerCase() + '\uf8ff')
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const usersList: User[] = [];
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          if (doc.id !== FIREBASE_AUTH.currentUser?.uid) {
+            usersList.push({
+              id: doc.id,
+              username: userData.username || 'Unknown User',
+            });
+          }
+        });
+        
+        setUsers(usersList);
+        setFilteredUsers(usersList);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setUsers([]);
+        setFilteredUsers([]);
+        setLoading(false);
+      }
     };
 
-    fetchUsers();
+    // Initial load with empty search
+    searchUsers('');
   }, []);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     const searchTerm = text.toLowerCase();
     const filtered = users.filter(user => 
-      user.username.toLowerCase().includes(searchTerm) ||
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm)
+      user.username.toLowerCase().includes(searchTerm)
     );
     setFilteredUsers(filtered);
   };
@@ -92,9 +105,6 @@ const NewMessage = () => {
     >
       <View style={styles.userInfo}>
         <Text style={styles.userName}>@{user.username}</Text>
-        <Text style={styles.userFullName}>
-          {user.firstName} {user.lastName}
-        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -112,27 +122,30 @@ const NewMessage = () => {
             <View style={styles.searchContainer}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search by username or name..."
+                placeholder="Search by username..."
                 placeholderTextColor="#A1A1AA"
                 value={searchQuery}
                 onChangeText={handleSearch}
                 autoCapitalize="none"
               />
             </View>
-            <FlatList
-              data={filteredUsers}
-              renderItem={renderUser}
-              keyExtractor={(item) => item.id}
-              style={styles.userList}
-              keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? 'No users found' : 'No users available'}
-                  </Text>
-                </View>
-              }
-            />
+            
+            {searchQuery.length > 0 && (
+              <FlatList
+                data={filteredUsers}
+                renderItem={renderUser}
+                keyExtractor={(item) => item.id}
+                style={styles.userList}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      No users found
+                    </Text>
+                  </View>
+                }
+              />
+            )}
             
             {selectedUser && (
               <View style={styles.messageContainer}>
@@ -210,11 +223,6 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 16,
     color: '#44FFA1',
-  },
-  userFullName: {
-    fontFamily: 'LeagueSpartan_400Regular',
-    fontSize: 14,
-    color: '#A1A1AA',
   },
   messageContainer: {
     marginTop: 24,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -18,9 +18,11 @@ import { formatDistanceToNow } from 'date-fns';
 import type { Message, Conversation } from '../contexts/MessageContext';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
-import { FIREBASE_AUTH } from '../../FirebaseConfig';
+import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { formatMessageTimestamp } from '../utils/dateUtils';
 import * as Haptics from 'expo-haptics';
+import MessageOptionsModal from '../components/modals/MessageOptionsModal';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 const Messages = () => {
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
@@ -31,6 +33,7 @@ const Messages = () => {
     LeagueSpartan_400Regular,
     LeagueSpartan_700Bold,
   });
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
 
   // Group messages into conversations
   const conversations = React.useMemo(() => {
@@ -81,35 +84,34 @@ const Messages = () => {
     return null;
   }
 
-  const handleLongPressConversation = async (conversationId: string) => {
+  const handleLongPressConversation = async (conversation: Conversation) => {
     // Trigger haptic feedback
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedConversation(conversation);
+  };
 
-    Alert.alert(
-      'Conversation Options',
-      'What would you like to do?',
-      [
-        {
-          text: 'Delete Conversation',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteConversation(conversationId);
-              // Optional: Add success haptic
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } catch (error) {
-              console.error('Error deleting conversation:', error);
-              // Optional: Add error haptic
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            }
-          },
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+  const handleBlockUser = async (userId: string) => {
+    try {
+      // Add user to blocked list in Firestore
+      const currentUser = FIREBASE_AUTH.currentUser;
+      if (!currentUser) return;
+
+      await updateDoc(doc(FIREBASE_DB, 'players', currentUser.uid), {
+        blockedUsers: arrayUnion(userId)
+      });
+
+      // Delete the conversation
+      await deleteConversation(selectedConversation?.id || '');
+      
+      // Optional: Add success haptic
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      setSelectedConversation(null);
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      // Optional: Add error haptic
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => {
@@ -119,7 +121,7 @@ const Messages = () => {
       <TouchableOpacity
         style={[styles.messageContainer, item.unread && styles.unreadMessage]}
         onPress={() => navigation.navigate('MessageDetail', { messageId: item.id })}
-        onLongPress={() => handleLongPressConversation(item.id)}
+        onLongPress={() => handleLongPressConversation(item)}
         delayLongPress={500}
       >
         <LinearGradient
@@ -202,6 +204,24 @@ const Messages = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      {selectedConversation && (
+        <MessageOptionsModal
+          visible={!!selectedConversation}
+          onClose={() => setSelectedConversation(null)}
+          onDelete={async () => {
+            try {
+              await deleteConversation(selectedConversation.id);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.error('Error deleting conversation:', error);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            setSelectedConversation(null);
+          }}
+          onBlock={() => handleBlockUser(selectedConversation.otherUserId)}
+          username={selectedConversation.otherUserName}
+        />
+      )}
     </ScreenTemplate>
   );
 };

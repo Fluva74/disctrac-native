@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import BlockedUsersModal from '../components/modals/BlockedUsersModal';
 
 const Settings = () => {
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -37,6 +40,17 @@ const Settings = () => {
           </LinearGradient>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => setShowBlockedUsers(true)}>
+          <LinearGradient
+            colors={['rgba(68, 255, 161, 0.1)', 'rgba(77, 159, 255, 0.1)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.settingItem}
+          >
+            <Text style={styles.settingText}>Blocked Users</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={handleSignOut}>
           <LinearGradient
             colors={['rgba(68, 255, 161, 0.1)', 'rgba(77, 159, 255, 0.1)']}
@@ -48,6 +62,10 @@ const Settings = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      <BlockedUsersModal
+        visible={showBlockedUsers}
+        onClose={() => setShowBlockedUsers(false)}
+      />
     </ScreenTemplate>
   );
 };
@@ -76,6 +94,11 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  settingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 });
 

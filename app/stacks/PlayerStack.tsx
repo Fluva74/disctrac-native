@@ -39,7 +39,15 @@ export type PlayerStackParamList = {
     };
   };
   Messages: undefined;
-  MessageDetail: { messageId: string };
+  MessageDetail: { 
+    messageId: string;
+    receiverInfo?: {
+      id: string;
+      name: string;
+      discName?: string;
+      initialMessage?: string;
+    };
+  };
   NewMessage: undefined;
   DiscGolfVideos: undefined;
   ProVideos: undefined;

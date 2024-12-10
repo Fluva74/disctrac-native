@@ -41,6 +41,14 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#44FFA1",
+          "sounds": ["./assets/notification-sound.wav"]
+        }
       ]
     ],
     "extra": {
@@ -48,6 +56,13 @@
         "projectId": "78b9cd6e-db6a-43ee-929b-7700fb060420"
       }
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#44FFA1",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "New Message"
+    }
   }
 }

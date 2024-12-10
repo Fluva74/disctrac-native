@@ -4,6 +4,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
+import ScreenTemplate from '../components/ScreenTemplate';
 
 const DiscGolfVideos = () => {
     const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
@@ -17,17 +18,7 @@ const DiscGolfVideos = () => {
     }
 
     return (
-        <LinearGradient
-            colors={['transparent', 'transparent', 'rgba(59, 130, 246, 0.2)']}
-            style={styles.container}
-            locations={[0, 0.5, 1]}
-        >
-            {/* Logo Header */}
-            <View style={styles.header}>
-                <Text style={styles.logo}>disctrac</Text>
-            </View>
-
-            {/* Main Content */}
+        <ScreenTemplate>
             <View style={styles.content}>
                 <Text style={styles.title}>Disc Golf Videos</Text>
 
@@ -61,25 +52,11 @@ const DiscGolfVideos = () => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </LinearGradient>
+        </ScreenTemplate>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#09090B',
-    },
-    header: {
-        paddingTop: 32,
-        paddingHorizontal: 32,
-    },
-    logo: {
-        fontFamily: 'LeagueSpartan_700Bold',
-        fontSize: 32,
-        textAlign: 'center',
-        color: '#44FFA1',
-    },
     content: {
         flex: 1,
         paddingHorizontal: 24,
@@ -90,8 +67,6 @@ const styles = StyleSheet.create({
         fontFamily: 'LeagueSpartan_700Bold',
         fontSize: 40,
         color: '#FFFFFF',
-        marginTop: 60,
-
         marginBottom: 48,
         textAlign: 'center',
     },
