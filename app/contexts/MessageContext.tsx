@@ -11,8 +11,11 @@ import {
   getDoc,
   addDoc,
   serverTimestamp,
-  getDocs
+  getDocs,
+  deleteDoc,
+  writeBatch
 } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 
 export interface Message {
   id: string;
@@ -48,37 +51,30 @@ interface MessageContextType {
   getConversationMessages: (otherUserId: string) => Message[];
   markAsRead: (messageId: string) => Promise<void>;
   sendMessage: (receiverId: string, message: string, discId?: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  deleteConversation: (conversationId: string) => Promise<void>;
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
 
 export function MessageProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Handle auth state changes
   useEffect(() => {
-    const unsubscribeAuth = FIREBASE_AUTH.onAuthStateChanged(user => {
-      setCurrentUserId(user?.uid || null);
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
-
-  // Handle messages subscription
-  useEffect(() => {
-    if (!currentUserId) {
+    if (!user) {
       setMessages([]);
       setUnreadCount(0);
       return;
     }
 
+    // Handle messages subscription
     try {
       const messagesRef = collection(FIREBASE_DB, 'messages');
       const messageQuery = query(
         messagesRef,
-        where('participants', 'array-contains', currentUserId),
+        where('participants', 'array-contains', user.uid),
         orderBy('timestamp', 'desc')
       );
 
@@ -91,7 +87,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
           snapshot.forEach((doc) => {
             const message = { id: doc.id, ...doc.data() } as Message;
             messageList.push(message);
-            if (!message.read && message.receiverId === currentUserId) {
+            if (!message.read && message.receiverId === user.uid) {
               unread++;
             }
           });
@@ -108,11 +104,11 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Messages setup error:', error);
     }
-  }, [currentUserId]);
+  }, [user]);
 
-  // Rest of the functions remain the same but use currentUserId instead of currentUser
+  // Rest of the functions remain the same but use user.uid instead of currentUserId
   const sendMessage = async (receiverId: string, message: string, discId?: string) => {
-    if (!currentUserId) return;
+    if (!user) return;
     
     try {
       // Validate inputs
@@ -120,7 +116,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Invalid message parameters');
       }
 
-      const userDoc = await getDoc(doc(FIREBASE_DB, 'players', currentUserId));
+      const userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
       if (!userDoc.exists()) {
         throw new Error('Sender profile not found');
       }
@@ -135,14 +131,14 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
       const now = new Date();
 
       const messageData = {
-        senderId: currentUserId,
+        senderId: user.uid,
         senderName,
         receiverId,
         message: message.trim(),
         timestamp: serverTimestamp(),
         read: false,
         type: discId ? 'alert' : 'message',
-        participants: [currentUserId, receiverId],
+        participants: [user.uid, receiverId],
         ...(discId && { discId }),
         createdAt: now.toISOString(), // ISO string format
       };
@@ -157,7 +153,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markAsRead = async (messageId: string) => {
-    if (!currentUserId) return;
+    if (!user) return;
     
     try {
       await updateDoc(doc(FIREBASE_DB, 'messages', messageId), {
@@ -169,16 +165,66 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getConversationMessages = (otherUserId: string) => {
-    if (!currentUserId) return [];
+    if (!user) return [];
     
     return messages.filter(message => 
-      (message.senderId === currentUserId && message.receiverId === otherUserId) ||
-      (message.senderId === otherUserId && message.receiverId === currentUserId)
+      (message.senderId === user.uid && message.receiverId === otherUserId) ||
+      (message.senderId === otherUserId && message.receiverId === user.uid)
     ).sort((a, b) => {
       const timeA = a.timestamp?.toDate?.()?.getTime() || new Date(a.createdAt).getTime();
       const timeB = b.timestamp?.toDate?.()?.getTime() || new Date(b.createdAt).getTime();
       return timeA - timeB;
     });
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(FIREBASE_DB, 'messages', messageId));
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    if (!user) return;
+    try {
+      const [user1, user2] = conversationId.split('_');
+      const otherUserId = user1 === user.uid ? user2 : user1;
+      
+      // Query messages where the current user is a participant
+      const messagesRef = collection(FIREBASE_DB, 'messages');
+      const q = query(
+        messagesRef,
+        where('participants', 'array-contains', user.uid),
+        // Use IN operator to match either sender or receiver
+        where(
+          'senderId',
+          'in',
+          [user.uid, otherUserId]
+        )
+      );
+      
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(FIREBASE_DB);
+      
+      snapshot.docs.forEach((doc) => {
+        const message = doc.data();
+        // Only delete if the message is between these two users
+        if (
+          (message.senderId === user.uid && message.receiverId === otherUserId) ||
+          (message.senderId === otherUserId && message.receiverId === user.uid)
+        ) {
+          batch.delete(doc.ref);
+        }
+      });
+      
+      await batch.commit();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      throw error;
+    }
   };
 
   return (
@@ -187,7 +233,9 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
       unreadCount, 
       getConversationMessages, 
       markAsRead, 
-      sendMessage 
+      sendMessage,
+      deleteMessage,
+      deleteConversation
     }}>
       {children}
     </MessageContext.Provider>

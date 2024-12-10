@@ -8,7 +8,8 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   FlatList,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,13 +18,14 @@ import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import type { Message } from '../contexts/MessageContext';
+import * as Haptics from 'expo-haptics';
 
 type MessageDetailRouteProp = RouteProp<PlayerStackParamList, 'MessageDetail'>;
 
 const MessageDetail = () => {
   const route = useRoute<MessageDetailRouteProp>();
   const { messageId } = route.params;
-  const { messages, sendMessage } = useMessages();
+  const { messages, sendMessage, deleteMessage } = useMessages();
   const [replyText, setReplyText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -75,30 +77,66 @@ const MessageDetail = () => {
     }
   };
 
+  const handleLongPressMessage = async (message: Message) => {
+    // Trigger haptic feedback
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    Alert.alert(
+      'Message Options',
+      'What would you like to do?',
+      [
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMessage(message.id);
+              // Optional: Add success haptic
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.error('Error deleting message:', error);
+              // Optional: Add error haptic
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   const renderMessage = ({ item }: { item: Message }) => (
-    <View style={[
-      styles.messageContainer,
-      item.senderId === currentUser?.uid ? styles.sentMessage : styles.receivedMessage
-    ]}>
-      <LinearGradient
-        colors={item.senderId === currentUser?.uid 
-          ? ['rgba(68, 255, 161, 0.3)', 'rgba(68, 255, 161, 0.2)']
-          : ['rgba(77, 159, 255, 0.3)', 'rgba(77, 159, 255, 0.2)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.messageGradient}
-      >
-        <Text style={styles.messageText}>{item.message}</Text>
-        <Text style={styles.timestamp}>
-          {item.timestamp?.toDate ? 
-            new Date(item.timestamp.toDate()).toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            }) : ''
-          }
-        </Text>
-      </LinearGradient>
-    </View>
+    <TouchableOpacity
+      onLongPress={() => handleLongPressMessage(item)}
+      delayLongPress={500}
+    >
+      <View style={[
+        styles.messageContainer,
+        item.senderId === currentUser?.uid ? styles.sentMessage : styles.receivedMessage
+      ]}>
+        <LinearGradient
+          colors={item.senderId === currentUser?.uid 
+            ? ['rgba(68, 255, 161, 0.3)', 'rgba(68, 255, 161, 0.2)']
+            : ['rgba(77, 159, 255, 0.3)', 'rgba(77, 159, 255, 0.2)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.messageGradient}
+        >
+          <Text style={styles.messageText}>{item.message}</Text>
+          <Text style={styles.timestamp}>
+            {item.timestamp?.toDate ? 
+              new Date(item.timestamp.toDate()).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }) : ''
+            }
+          </Text>
+        </LinearGradient>
+      </View>
+    </TouchableOpacity>
   );
 
   return (

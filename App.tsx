@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { FIREBASE_AUTH, FIREBASE_DB } from './FirebaseConfig';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { ActivityIndicator, View } from 'react-native';
+import { AuthProvider, useAuth } from './app/contexts/AuthContext';
+import { MessageProvider } from './app/contexts/MessageContext';
 
 // Import all screens
 import Login from './app/screens/Login';
@@ -13,7 +12,6 @@ import PlayerCreate from './app/screens/PlayerCreate';
 import StoreCreate from './app/screens/StoreCreate';
 import PlayerStackNavigator from './app/stacks/PlayerStack';
 import StoreStackNavigator from './app/stacks/StoreStack';
-import { MessageProvider } from './app/contexts/MessageContext';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -69,54 +67,50 @@ export type InsideStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'player' | 'store' | null>(null);
+// Create a separate navigator component that uses the auth context
+function RootNavigator() {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(FIREBASE_AUTH, async (authUser) => {
-      setUser(authUser);
-
-      if (authUser) {
-        // Check if player
-        const playerDoc = await getDoc(doc(FIREBASE_DB, 'players', authUser.uid));
-        if (playerDoc.exists()) {
-          setUserRole('player');
-        } else {
-          // Check if store
-          const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', authUser.uid));
-          if (storeDoc.exists()) {
-            setUserRole('store');
-          }
-        }
-      } else {
-        setUserRole(null);
-      }
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#09090B' }}>
+        <ActivityIndicator size="large" color="#44FFA1" />
+      </View>
+    );
+  }
 
   return (
-    <NavigationContainer>
-      <MessageProvider>
-        <Stack.Navigator 
-          screenOptions={{ headerShown: false }}
-          initialRouteName="Login"
-        >
-          {/* Auth Screens */}
+    <Stack.Navigator 
+      screenOptions={{ headerShown: false }}
+      initialRouteName={user ? "PlayerStack" : "Login"}
+    >
+      {!user ? (
+        // Auth screens
+        <>
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="AccountSelection" component={AccountSelection} />
           <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
           <Stack.Screen name="StoreCreate" component={StoreCreate} />
-          
-          {/* Main App Stacks */}
+        </>
+      ) : (
+        // App screens
+        <>
           <Stack.Screen name="PlayerStack" component={PlayerStackNavigator} />
           <Stack.Screen name="StoreStack" component={StoreStackNavigator} />
-        </Stack.Navigator>
-      </MessageProvider>
-    </NavigationContainer>
+        </>
+      )}
+    </Stack.Navigator>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <MessageProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </MessageProvider>
+    </AuthProvider>
+  );
+}

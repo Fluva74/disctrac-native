@@ -6,7 +6,8 @@ import {
   FlatList, 
   RefreshControl,
   ActivityIndicator,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
@@ -19,10 +20,11 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import { formatMessageTimestamp } from '../utils/dateUtils';
+import * as Haptics from 'expo-haptics';
 
 const Messages = () => {
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
-  const { messages, markAsRead } = useMessages();
+  const { messages, markAsRead, deleteConversation } = useMessages();
   const [refreshing, setRefreshing] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [fontsLoaded] = useFonts({
@@ -79,6 +81,37 @@ const Messages = () => {
     return null;
   }
 
+  const handleLongPressConversation = async (conversationId: string) => {
+    // Trigger haptic feedback
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    Alert.alert(
+      'Conversation Options',
+      'What would you like to do?',
+      [
+        {
+          text: 'Delete Conversation',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteConversation(conversationId);
+              // Optional: Add success haptic
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.error('Error deleting conversation:', error);
+              // Optional: Add error haptic
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
   const renderConversation = ({ item }: { item: Conversation }) => {
     const timestamp = formatMessageTimestamp(item.timestamp, item.createdAt);
 
@@ -86,6 +119,8 @@ const Messages = () => {
       <TouchableOpacity
         style={[styles.messageContainer, item.unread && styles.unreadMessage]}
         onPress={() => navigation.navigate('MessageDetail', { messageId: item.id })}
+        onLongPress={() => handleLongPressConversation(item.id)}
+        delayLongPress={500}
       >
         <LinearGradient
           colors={['rgba(68, 255, 161, 0.1)', 'rgba(77, 159, 255, 0.1)']}
