@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import { useRoute, RouteProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, limit } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
+import debounce from 'lodash/debounce';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Static imports for selected color images
 const colorImages = {
@@ -87,6 +89,18 @@ interface Suggestion {
   manufacturer: string;
 }
 
+// Add this interface
+interface CachedSuggestions {
+  [key: string]: {
+    suggestions: Suggestion[];
+    timestamp: number;
+  }
+}
+
+// Add these constants
+const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 hours
+const CACHE_KEY = 'disc_suggestions_cache';
+
 const AddDisc = () => {
   const route = useRoute<RouteProp<InsideStackParamList, 'AddDisc'>>();
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
@@ -110,48 +124,66 @@ const AddDisc = () => {
       return;
     }
 
+    const lowercaseText = text.toLowerCase();
+
     try {
-      const discsRef = collection(FIREBASE_DB, 'discs');
-      const lowercaseText = text.toLowerCase();
+      // Check cache first
+      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+      const cache: CachedSuggestions = cachedData ? JSON.parse(cachedData) : {};
       
-      const querySnapshot = await getDocs(discsRef);
+      // If we have valid cached data, use it
+      if (cache[lowercaseText] && 
+          Date.now() - cache[lowercaseText].timestamp < CACHE_EXPIRY) {
+        setSuggestions(cache[lowercaseText].suggestions);
+        setShowSuggestions(cache[lowercaseText].suggestions.length > 0);
+        return;
+      }
+
+      // If no cache hit, query Firestore using the existing index
+      const discsRef = collection(FIREBASE_DB, 'discs');
+      const q = query(
+        discsRef,
+        where('nameLower', '>=', lowercaseText),
+        where('nameLower', '<=', lowercaseText + '\uf8ff'),
+        limit(10)
+      );
+
+      const querySnapshot = await getDocs(q);
       
       const fetchedSuggestions = querySnapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          // Only process docs that have the required data
-          if (!data?.name) return null;
-          
-          return {
-            id: doc.id,
-            title: data.name,
-            manufacturer: data.manufacturer
-          };
-        })
-        .filter((suggestion): suggestion is Suggestion => {
-          // Remove null values and filter by search text
-          return suggestion !== null && 
-                 suggestion.title.toLowerCase().includes(lowercaseText);
-        });
+        .map(doc => ({
+          id: doc.id,
+          title: doc.data().name, // Use the original name field for display
+          manufacturer: doc.data().manufacturer
+        }));
 
-      console.log(`Found ${fetchedSuggestions.length} matches for "${text}"`);
-      
+      // Update cache
+      cache[lowercaseText] = {
+        suggestions: fetchedSuggestions,
+        timestamp: Date.now()
+      };
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+
       setSuggestions(fetchedSuggestions);
       setShowSuggestions(fetchedSuggestions.length > 0);
     } catch (error: unknown) {
       console.error('Error fetching suggestions:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', error.message);
-      }
       setSuggestions([]);
       setShowSuggestions(false);
     }
   }, []);
 
+  // Create a debounced version of the fetch function
+  const debouncedFetchSuggestions = useMemo(
+    () => debounce(fetchNameSuggestions, 300),
+    [fetchNameSuggestions]
+  );
+
+  // Update the handleNameChange function
   const handleNameChange = (text: string) => {
     setName(text);
     if (text.length >= 2) {
-      fetchNameSuggestions(text);
+      debouncedFetchSuggestions(text);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -219,6 +251,13 @@ const AddDisc = () => {
     LeagueSpartan_400Regular,
     LeagueSpartan_700Bold,
   });
+
+  // Add cleanup for debounce
+  useEffect(() => {
+    return () => {
+      debouncedFetchSuggestions.cancel();
+    };
+  }, [debouncedFetchSuggestions]);
 
   if (!fontsLoaded) {
     return null;

@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "discs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nameLower", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    }
+  ]
+} 

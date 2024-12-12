@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BaseModal from './BaseModal';
+import ReleaseConfirmationModal from './ReleaseConfirmationModal';
 
 interface NotificationModalProps {
   visible: boolean;
@@ -9,6 +10,8 @@ interface NotificationModalProps {
   onReleaseDisc: () => void;
   discName: string;
   company: string;
+  discId: string;
+  onReleaseSuccess?: () => void;
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({
@@ -17,43 +20,72 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   onReleaseDisc,
   discName,
   company,
+  discId,
+  onReleaseSuccess,
 }) => {
+  const [showReleaseConfirmation, setShowReleaseConfirmation] = useState(false);
+
+  const handleReleaseClick = () => {
+    setShowReleaseConfirmation(true);
+  };
+
+  const handleConfirmRelease = () => {
+    setShowReleaseConfirmation(false);
+    onReleaseDisc();
+  };
+
+  const handleCancelRelease = () => {
+    setShowReleaseConfirmation(false);
+  };
+
   return (
-    <BaseModal visible={visible} onClose={onClose}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Time to Celebrate!</Text>
-        <Text style={styles.subtitle}>Your Disc Has Been Found!</Text>
+    <>
+      <BaseModal visible={visible && !showReleaseConfirmation} onClose={onClose}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Time to Celebrate!</Text>
+          <Text style={styles.subtitle}>Your Disc Has Been Found!</Text>
 
-        <View style={styles.discInfo}>
-          <Text style={styles.label}>Disc Name</Text>
-          <Text style={styles.value}>{discName}</Text>
+          <View style={styles.discInfo}>
+            <Text style={styles.label}>Disc Name</Text>
+            <Text style={styles.value}>{discName}</Text>
 
-          <Text style={styles.label}>Company</Text>
-          <Text style={styles.value}>{company}</Text>
+            <Text style={styles.label}>Company</Text>
+            <Text style={styles.value}>{company}</Text>
+          </View>
+
+          <Text style={styles.message}>
+            Another player has found your disc! They have sent notification to you and will be holding the 
+            disc until you choose your options. If the player chooses to turn the disc in to a retailer, 
+            you will be notified.
+          </Text>
+
+          <TouchableOpacity onPress={onClose} style={styles.releaseButton}>
+            <LinearGradient
+              colors={['#44FFA1', '#4D9FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradient}
+            >
+              <Text style={styles.releaseButtonText}>Close</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleReleaseClick} style={styles.deleteButton}>
+            <Text style={styles.deleteButtonText}>Release Disc</Text>
+          </TouchableOpacity>
         </View>
+      </BaseModal>
 
-        <Text style={styles.message}>
-          Another player has found your disc! They have sent notification to you and will be holding the 
-          disc until you choose your options. If the player chooses to turn the disc in to a retailer, 
-          you will be notified.
-        </Text>
-
-        <TouchableOpacity onPress={onReleaseDisc} style={styles.releaseButton}>
-          <LinearGradient
-            colors={['#44FFA1', '#4D9FFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
-          >
-            <Text style={styles.releaseButtonText}>Release Disc</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={onClose} style={styles.deleteButton}>
-          <Text style={styles.deleteButtonText}>Delete All</Text>
-        </TouchableOpacity>
-      </View>
-    </BaseModal>
+      <ReleaseConfirmationModal
+        visible={showReleaseConfirmation}
+        onClose={handleCancelRelease}
+        onConfirm={handleConfirmRelease}
+        discName={discName}
+        company={company}
+        discId={discId}
+        onSuccess={onReleaseSuccess}
+      />
+    </>
   );
 };
 

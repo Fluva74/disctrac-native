@@ -3,7 +3,7 @@ import { View, Text, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 import { DiscFoundModal } from '../components/modals';
 import { InvalidQRModal } from '../components/modals';
@@ -180,6 +180,19 @@ const ScannerScreen = () => {
             const currentUser = FIREBASE_AUTH.currentUser;
             if (!currentUser) return;
             
+            // Create notification with scanner's ID
+            const notificationsRef = collection(FIREBASE_DB, 'notifications');
+            addDoc(notificationsRef, {
+              userId: foundDiscData.userId,  // Owner's ID (the "loser")
+              discId: foundDiscData.discId,
+              discName: foundDiscData.discDetails.name,
+              company: foundDiscData.discDetails.manufacturer,
+              timestamp: serverTimestamp(),
+              type: 'DISC_FOUND',
+              read: false,
+              scannerUserId: currentUser.uid  // This is where we set the scanner's ID
+            });
+
             const conversationId = [currentUser.uid, foundDiscData.userId]
               .sort()
               .join('_');
@@ -205,6 +218,7 @@ const ScannerScreen = () => {
             color: foundDiscData.discDetails.color
           }}
           contactInfo={foundDiscData.contactInfo}
+          scannerUserId={FIREBASE_AUTH.currentUser?.uid || ''}
         />
       )}
 

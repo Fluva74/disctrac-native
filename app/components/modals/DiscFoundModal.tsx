@@ -24,6 +24,7 @@ interface DiscFoundModalProps {
     inApp: boolean;
     preferredMethod: 'email' | 'phone' | 'inApp';
   };
+  scannerUserId: string;
 }
 
 const colorToImageMap: { [key: string]: any } = {
@@ -63,6 +64,7 @@ const DiscFoundModal: React.FC<DiscFoundModalProps> = ({
   userId,
   discDetails,
   contactInfo,
+  scannerUserId,
 }) => {
   const getDiscImage = (color: string) => {
     const formattedColor = color.startsWith('disc') 
@@ -95,32 +97,17 @@ const DiscFoundModal: React.FC<DiscFoundModalProps> = ({
 
   const handleNotifyOwner = async () => {
     try {
-      console.log('Starting notification creation for user:', userId);
-      // First create the notification
-      const notificationRef = await addDoc(collection(FIREBASE_DB, 'notifications'), {
-        userId: userId,
-        discId: discDetails.id,
-        discName: discDetails.name,
-        company: discDetails.manufacturer,
-        timestamp: serverTimestamp(),
-        type: 'DISC_FOUND',
-        read: false
-      });
-      console.log('Notification created successfully with ID:', notificationRef.id);
-
-      // Then navigate to messaging
       const currentUser = FIREBASE_AUTH.currentUser;
       if (!currentUser) {
         console.log('No current user found');
         return;
       }
       
-      // Call the onNotifyOwner prop which handles navigation
+      // Just call the onNotifyOwner prop which handles navigation
       onNotifyOwner();
 
     } catch (error) {
-      console.error('Error creating notification:', error);
-      // Log the full error details
+      console.error('Error in handleNotifyOwner:', error);
       if (error instanceof Error) {
         console.error('Error details:', error.message);
         console.error('Error stack:', error.stack);
@@ -276,6 +263,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
     paddingTop: 8,
+  },
+  releaseButton: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 8,
+  },
+  releaseButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#44FFA1',
+    textAlign: 'center',
   },
 });
 
