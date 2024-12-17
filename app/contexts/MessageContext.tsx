@@ -238,21 +238,10 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteMessage = async (messageId: string) => {
-    if (!user) return;
     try {
       const messageRef = doc(FIREBASE_DB, 'messages', messageId);
-      const messageSnap = await getDoc(messageRef);
-      
-      if (messageSnap.exists()) {
-        const message = messageSnap.data();
-        const deletedBy = message.deletedBy || [];
-        
-        if (!deletedBy.includes(user.uid)) {
-          await updateDoc(messageRef, {
-            deletedBy: [...deletedBy, user.uid]
-          });
-        }
-      }
+      await deleteDoc(messageRef);
+      console.log('Message deleted successfully');
     } catch (error) {
       console.error('Error deleting message:', error);
       throw error;
@@ -260,36 +249,32 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteConversation = async (conversationId: string) => {
-    if (!user) return;
     try {
-      const [user1, user2] = conversationId.split('_');
-      const otherUserId = user1 === user.uid ? user2 : user1;
-      
+      const currentUser = FIREBASE_AUTH.currentUser;
+      if (!currentUser) return;
+
+      // Get all messages in the conversation
       const messagesRef = collection(FIREBASE_DB, 'messages');
       const q = query(
         messagesRef,
-        where('participants', 'array-contains', user.uid)
+        where('participants', 'array-contains', currentUser.uid)
       );
       
-      const snapshot = await getDocs(q);
+      const querySnapshot = await getDocs(q);
       const batch = writeBatch(FIREBASE_DB);
-      
-      snapshot.docs.forEach((doc) => {
-        const message = doc.data();
-        if (
-          (message.senderId === user.uid && message.receiverId === otherUserId) ||
-          (message.senderId === otherUserId && message.receiverId === user.uid)
-        ) {
-          const deletedBy = message.deletedBy || [];
-          if (!deletedBy.includes(user.uid)) {
-            batch.update(doc.ref, {
-              deletedBy: [...deletedBy, user.uid]
-            });
-          }
+
+      querySnapshot.docs.forEach((doc) => {
+        const messageData = doc.data();
+        if (messageData.participants.sort().join('_') === conversationId) {
+          // Delete the message document
+          batch.delete(doc.ref);
         }
       });
-      
+
+      // Commit the batch
       await batch.commit();
+      console.log('Conversation deleted successfully');
+
     } catch (error) {
       console.error('Error deleting conversation:', error);
       throw error;
