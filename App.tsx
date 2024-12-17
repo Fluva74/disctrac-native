@@ -116,16 +116,16 @@ function RootNavigator() {
 // Wrap the app with NotificationProvider
 export default function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <MessageProvider>
-          <NavigationContainer>
+    <NavigationContainer>
+      <AuthProvider>
+        <NotificationProvider>
+          <MessageProvider>
             <RootNavigator />
-          </NavigationContainer>
-          <NotificationOverlay />
-        </MessageProvider>
-      </NotificationProvider>
-    </AuthProvider>
+            <NotificationOverlay />
+          </MessageProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </NavigationContainer>
   );
 }
 

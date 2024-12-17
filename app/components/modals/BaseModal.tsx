@@ -31,7 +31,10 @@ const BaseModal: React.FC<BaseModalProps> = ({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
+          <TouchableWithoutFeedback onPress={(e) => {
+            // Prevent the overlay's onPress from firing
+            e.stopPropagation();
+          }}>
             <View style={styles.modalContainer}>
               <LinearGradient
                 colors={['#18181B', '#27272A']}

@@ -38,20 +38,28 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
           you will be notified.
         </Text>
 
-        <TouchableOpacity onPress={onReleaseDisc} style={styles.releaseButton}>
-          <LinearGradient
-            colors={['#44FFA1', '#4D9FFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
-          >
-            <Text style={styles.releaseButtonText}>Release Disc</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity onPress={onReleaseDisc} style={styles.releaseButton}>
+            <LinearGradient
+              colors={['#44FFA1', '#4D9FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradient}
+            >
+              <Text style={styles.releaseButtonText}>Release Disc</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={onClose} style={styles.deleteButton}>
-          <Text style={styles.deleteButtonText}>Delete All</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              console.log('Close button pressed in NotificationModal');
+              onClose();
+            }} 
+            style={styles.closeButton}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </BaseModal>
   );
@@ -96,6 +104,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+  buttonContainer: {
+    width: '100%',
+    marginTop: 16,
+  },
   releaseButton: {
     width: '100%',
     marginBottom: 12,
@@ -110,11 +122,13 @@ const styles = StyleSheet.create({
     color: '#000000',
     textAlign: 'center',
   },
-  deleteButton: {
+  closeButton: {
     width: '100%',
     padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
   },
-  deleteButtonText: {
+  closeButtonText: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
     color: '#FFFFFF',

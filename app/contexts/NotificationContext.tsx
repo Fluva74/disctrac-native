@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
+import NotificationModal from '../components/modals/NotificationModal';
 
 interface Notification {
   id: string;
@@ -79,21 +80,36 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const dismissNotification = async () => {
-    if (!currentNotification) return;
+    console.log('dismissNotification called');
+    if (!currentNotification) {
+      console.log('No current notification to dismiss');
+      return;
+    }
 
     try {
+      console.log('Attempting to mark notification as read:', currentNotification.id);
       // Mark notification as read
       await updateDoc(doc(FIREBASE_DB, 'notifications', currentNotification.id), {
         read: true
       });
       
+      console.log('Successfully marked notification as read');
+      
+      // Update notifications list and store the remaining notifications
+      const updatedNotifications = notifications.filter(n => n.id !== currentNotification.id);
+      setNotifications(updatedNotifications);
+      
+      // Clear current notification
       setCurrentNotification(null);
       
-      // Show next notification if there is one
-      const remainingNotifications = notifications.filter(n => n.id !== currentNotification.id);
-      if (remainingNotifications.length > 0) {
-        setCurrentNotification(remainingNotifications[0]);
-      }
+      // Wait a short delay before showing the next notification
+      setTimeout(() => {
+        console.log('Checking for remaining notifications:', updatedNotifications.length);
+        if (updatedNotifications.length > 0) {
+          setCurrentNotification(updatedNotifications[0]);
+        }
+      }, 500);
+
     } catch (error) {
       console.error('Error dismissing notification:', error);
     }

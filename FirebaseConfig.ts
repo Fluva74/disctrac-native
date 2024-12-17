@@ -12,6 +12,9 @@ import {
   FIREBASE_APP_ID 
 } from "@env";
 
+// Add this temporary debug log
+console.log('API Key:', FIREBASE_API_KEY);
+
 // Firebase configuration using environment variables
 const firebaseConfig = {
   apiKey: FIREBASE_API_KEY,
