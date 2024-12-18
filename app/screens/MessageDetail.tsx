@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { doc, getDoc } from 'firebase/firestore';
 import { FIREBASE_DB } from '../../FirebaseConfig';
+import { capitalizeFirstLetter } from '../utils/stringUtils';
 
 type MessageDetailRouteProp = RouteProp<PlayerStackParamList, 'MessageDetail'>;
 
@@ -191,7 +192,8 @@ const MessageDetail = () => {
   useEffect(() => {
     const sendInitialMessage = async () => {
       if (!messages.length && receiverInfo?.discName && otherUserId && currentUser) {
-        const initialMessage = `Hello! I found your ${receiverInfo.discName} disc!`;
+        const discName = capitalizeFirstLetter(receiverInfo.discName);
+        const initialMessage = `Hello! I found your ${discName} disc!`;
         try {
           await sendMessage(otherUserId, initialMessage);
           console.log('Initial message sent successfully');

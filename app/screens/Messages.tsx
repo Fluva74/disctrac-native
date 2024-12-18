@@ -23,6 +23,7 @@ import { formatMessageTimestamp } from '../utils/dateUtils';
 import * as Haptics from 'expo-haptics';
 import MessageOptionsModal from '../components/modals/MessageOptionsModal';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { capitalizeFirstLetter } from '../utils/stringUtils';
 
 const Messages = () => {
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
@@ -145,6 +146,11 @@ const Messages = () => {
             <Text style={styles.messageText} numberOfLines={1}>
               {item.lastMessage}
             </Text>
+            {item.lastMessage && item.lastMessage.includes('disc') && (
+              <Text>
+                Found disc: {capitalizeFirstLetter(item.lastMessage.split('your ')[1].split(' disc')[0])}
+              </Text>
+            )}
           </View>
         </LinearGradient>
       </TouchableOpacity>

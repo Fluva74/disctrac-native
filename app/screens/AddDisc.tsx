@@ -19,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
+import { capitalizeFirstLetter } from '../utils/stringUtils';
 
 // Static imports for selected color images
 const colorImages = {
@@ -181,7 +182,7 @@ const AddDisc = () => {
       const newDiscDoc = {
         uid: scannedData,
         userId: user.uid,
-        name: name.toLowerCase(),
+        name: capitalizeFirstLetter(name),
         manufacturer,
         color,
         plastic,

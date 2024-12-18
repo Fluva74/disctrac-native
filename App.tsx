@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, StatusBar, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './app/contexts/AuthContext';
 import { MessageProvider } from './app/contexts/MessageContext';
 import { NotificationProvider, useNotifications } from './app/contexts/NotificationContext';
@@ -14,6 +14,9 @@ import StoreCreate from './app/screens/StoreCreate';
 import PlayerStackNavigator from './app/stacks/PlayerStack';
 import StoreStackNavigator from './app/stacks/StoreStack';
 import NotificationModal from './app/components/modals/NotificationModal';
+
+// If you're using Expo
+// import * as NavigationBar from 'expo-navigation-bar';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -62,6 +65,7 @@ export type InsideStackParamList = {
       };
     };
   };
+  MessagesScreen: undefined;
   Messages: undefined;
   MessageDetail: { 
     messageId: string;
@@ -115,8 +119,24 @@ function RootNavigator() {
 
 // Wrap the app with NotificationProvider
 export default function App() {
+  useEffect(() => {
+    // Set status bar properties
+    StatusBar.setTranslucent(true);
+    StatusBar.setBackgroundColor('transparent');
+    
+    if (Platform.OS === 'android') {
+      // Hide system navigation bar
+      StatusBar.setHidden(true, 'slide');
+    }
+  }, []);
+
   return (
     <NavigationContainer>
+      <StatusBar 
+        translucent 
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
       <AuthProvider>
         <NotificationProvider>
           <MessageProvider>

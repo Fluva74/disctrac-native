@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import BaseModal from './BaseModal';
 
 interface MessageOptionsModalProps {
   visible: boolean;
   onClose: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
   onBlock: () => void;
   username: string;
 }
@@ -18,33 +18,51 @@ const MessageOptionsModal: React.FC<MessageOptionsModalProps> = ({
   onBlock,
   username,
 }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   return (
     <BaseModal visible={visible} onClose={onClose}>
       <View style={styles.container}>
-        <Text style={styles.title}>Message Options</Text>
-        <Text style={styles.subtitle}>@{username}</Text>
+        <Text style={styles.title}>Chat Options</Text>
+        <Text style={styles.subtitle}>Chat with {username}</Text>
 
         <TouchableOpacity 
-          style={styles.option} 
-          onPress={onDelete}
+          onPress={async () => {
+            try {
+              console.log('Delete conversation pressed');
+              setIsDeleting(true);
+              await onDelete();
+              console.log('Delete completed successfully');
+              onClose();
+            } catch (error) {
+              console.error('Error in delete handler:', error);
+              Alert.alert(
+                'Error',
+                'Failed to delete conversation. Please try again.'
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          }} 
+          style={[
+            styles.deleteButton,
+            isDeleting && styles.deleteButtonDisabled
+          ]}
+          disabled={isDeleting}
         >
-          <MaterialCommunityIcons name="delete-outline" size={24} color="#F87171" />
-          <Text style={[styles.optionText, styles.deleteText]}>Delete Conversation</Text>
+          {isDeleting ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.deleteButtonText}>Delete Conversation</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.option}
-          onPress={onBlock}
+          onPress={onBlock} 
+          style={styles.blockButton}
+          disabled={isDeleting}
         >
-          <MaterialCommunityIcons name="block-helper" size={24} color="#F87171" />
-          <Text style={[styles.optionText, styles.deleteText]}>Block User</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.option, styles.cancelOption]}
-          onPress={onClose}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.blockButtonText}>Block User</Text>
         </TouchableOpacity>
       </View>
     </BaseModal>
@@ -54,6 +72,7 @@ const MessageOptionsModal: React.FC<MessageOptionsModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   title: {
     fontFamily: 'LeagueSpartan_700Bold',
@@ -67,7 +86,7 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
     marginBottom: 24,
   },
-  option: {
+  deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
@@ -77,24 +96,28 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
-  optionText: {
+  deleteButtonText: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FF6B6B',
   },
-  deleteText: {
-    color: '#F87171',
-  },
-  cancelOption: {
-    backgroundColor: 'transparent',
-    marginTop: 8,
-  },
-  cancelText: {
-    fontFamily: 'LeagueSpartan_400Regular',
-    fontSize: 16,
-    color: '#A1A1AA',
-    textAlign: 'center',
+  blockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     width: '100%',
+    padding: 16,
+    backgroundColor: 'rgba(24, 24, 27, 0.5)',
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 12,
+  },
+  blockButtonText: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 16,
+    color: '#FF6B6B',
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

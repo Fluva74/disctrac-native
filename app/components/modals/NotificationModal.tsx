@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BaseModal from './BaseModal';
+import { capitalizeFirstLetter } from '../../utils/stringUtils';
 
 interface NotificationModalProps {
   visible: boolean;
@@ -26,7 +27,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
 
         <View style={styles.discInfo}>
           <Text style={styles.label}>Disc Name</Text>
-          <Text style={styles.value}>{discName}</Text>
+          <Text style={styles.value}>{capitalizeFirstLetter(discName)}</Text>
 
           <Text style={styles.label}>Company</Text>
           <Text style={styles.value}>{company}</Text>

@@ -299,15 +299,13 @@ const EditProfile = () => {
       <TouchableOpacity
         style={[
           styles.preferenceItem,
-          !contactPreferences.inApp && styles.preferenceItemDisabled
         ]}
         onPress={() => handleContactPreferenceChange('inApp')}
-        disabled={!contactPreferences.inApp}
       >
         <LinearGradient
-          colors={!contactPreferences.inApp 
-            ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
-            : ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']}
+          colors={contactPreferences.inApp 
+            ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
+            : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.preferenceGradient}
@@ -315,14 +313,13 @@ const EditProfile = () => {
           <View style={styles.preferenceContent}>
             <Text style={[
               styles.preferenceText,
-              !contactPreferences.inApp && styles.preferenceTextDisabled
             ]}>
               In-App Messaging
             </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.inApp ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={!contactPreferences.inApp ? "#52525B" : "#44FFA1"} 
+              color={contactPreferences.inApp ? "#44FFA1" : "#A1A1AA"} 
             />
           </View>
         </LinearGradient>
@@ -332,7 +329,11 @@ const EditProfile = () => {
 
   return (
     <ScreenTemplate title="Edit Profile">
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity 
           style={styles.avatarContainer}
           onPress={pickImage}
@@ -415,6 +416,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  contentContainer: {
+    paddingBottom: 100,
     gap: 24,
   },
   updateButton: {

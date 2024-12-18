@@ -198,11 +198,26 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     
     try {
-      await updateDoc(doc(FIREBASE_DB, 'messages', messageId), {
+      // Check if message exists and isn't already read
+      const messageRef = doc(FIREBASE_DB, 'messages', messageId);
+      const messageSnap = await getDoc(messageRef);
+      
+      if (!messageSnap.exists()) {
+        console.log('Message not found:', messageId);
+        return;
+      }
+      
+      const messageData = messageSnap.data();
+      if (messageData.read) {
+        console.log('Message already read:', messageId);
+        return;
+      }
+
+      await updateDoc(messageRef, {
         read: true
       });
       
-      // Update local unread count immediately
+      // Update local state
       setMessages(prevMessages => {
         const updatedMessages = prevMessages.map(msg => {
           if (msg.id === messageId) {
@@ -221,6 +236,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error) {
       console.error('Error marking message as read:', error);
+      // Don't throw the error to prevent loops
     }
   };
 
@@ -238,45 +254,97 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteMessage = async (messageId: string) => {
+    if (!user) return;
     try {
       const messageRef = doc(FIREBASE_DB, 'messages', messageId);
-      await deleteDoc(messageRef);
-      console.log('Message deleted successfully');
+      const messageSnap = await getDoc(messageRef);
+      
+      if (!messageSnap.exists()) {
+        console.log('Message not found:', messageId);
+        return;
+      }
+
+      const messageData = messageSnap.data();
+      const deletedBy = messageData.deletedBy || [];
+      
+      if (deletedBy.includes(user.uid)) {
+        console.log('Message already deleted by user');
+        return;
+      }
+
+      // If this is the first user deleting the message
+      if (deletedBy.length === 0) {
+        await updateDoc(messageRef, {
+          deletedBy: [user.uid]
+        });
+      } else {
+        // If both users have now deleted the message, remove it from Firestore
+        await deleteDoc(messageRef);
+      }
+
+      console.log('Message deletion handled successfully');
     } catch (error) {
-      console.error('Error deleting message:', error);
+      console.error('Error handling message deletion:', error);
       throw error;
     }
   };
 
   const deleteConversation = async (conversationId: string) => {
+    if (!user) {
+      console.log('No user found');
+      return;
+    }
     try {
-      const currentUser = FIREBASE_AUTH.currentUser;
-      if (!currentUser) return;
+      console.log('Starting conversation deletion for:', conversationId);
+      const [user1, user2] = conversationId.split('_');
+      const otherUserId = user1 === user.uid ? user2 : user1;
+      console.log('Other user ID:', otherUserId);
 
-      // Get all messages in the conversation
       const messagesRef = collection(FIREBASE_DB, 'messages');
+      // Single query that gets all messages where user is either sender or receiver
       const q = query(
         messagesRef,
-        where('participants', 'array-contains', currentUser.uid)
+        where('senderId', 'in', [user.uid, otherUserId]),
+        where('receiverId', 'in', [user.uid, otherUserId])
       );
       
-      const querySnapshot = await getDocs(q);
+      console.log('Fetching messages...');
+      const snapshot = await getDocs(q);
+      console.log('Found messages:', snapshot.size);
+      
       const batch = writeBatch(FIREBASE_DB);
+      let updateCount = 0;
 
-      querySnapshot.docs.forEach((doc) => {
-        const messageData = doc.data();
-        if (messageData.participants.sort().join('_') === conversationId) {
-          // Delete the message document
-          batch.delete(doc.ref);
+      snapshot.docs.forEach((doc) => {
+        const message = doc.data();
+        console.log('Processing message:', doc.id);
+        
+        const deletedBy = message.deletedBy || [];
+        if (!deletedBy.includes(user.uid)) {
+          updateCount++;
+          if (deletedBy.length === 0) {
+            console.log('Marking message for deletion:', doc.id);
+            batch.update(doc.ref, {
+              deletedBy: [user.uid]
+            });
+          } else {
+            console.log('Deleting message completely:', doc.id);
+            batch.delete(doc.ref);
+          }
         }
       });
 
-      // Commit the batch
-      await batch.commit();
-      console.log('Conversation deleted successfully');
-
+      console.log('Updates to make:', updateCount);
+      if (updateCount > 0) {
+        await batch.commit();
+        console.log('Batch commit successful');
+      } else {
+        console.log('No updates needed');
+      }
+      
+      console.log('Conversation deletion handled successfully');
     } catch (error) {
-      console.error('Error deleting conversation:', error);
+      console.error('Error handling conversation deletion:', error);
       throw error;
     }
   };

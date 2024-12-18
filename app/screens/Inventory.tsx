@@ -18,6 +18,7 @@ import { FIREBASE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, query, where, getDocs, doc, getDoc, deleteDoc, onSnapshot, QuerySnapshot, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import ScreenTemplate from '../components/ScreenTemplate';
+import { capitalizeFirstLetter } from '../utils/stringUtils';
 
 interface Disc {
   id: string;
@@ -162,7 +163,7 @@ const Inventory = () => {
           />
         </View>
         <View style={styles.discInfo}>
-          <Text style={styles.discName}>{item.name}</Text>
+          <Text style={styles.discName}>{capitalizeFirstLetter(item.name)}</Text>
           <Text style={styles.discManufacturer}>{item.manufacturer}</Text>
         </View>
       </LinearGradient>
@@ -189,7 +190,7 @@ const Inventory = () => {
               resizeMode="contain"
             />
             <View style={styles.modalDiscInfo}>
-              <Text style={styles.modalDiscName}>{selectedDisc.name}</Text>
+              <Text style={styles.modalDiscName}>{capitalizeFirstLetter(selectedDisc.name)}</Text>
               <Text style={styles.modalDiscManufacturer}>{selectedDisc.manufacturer}</Text>
             </View>
           </View>

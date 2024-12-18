@@ -134,20 +134,22 @@ const DiscFoundModal: React.FC<DiscFoundModalProps> = ({
         <Text style={styles.header}>This Disc Belongs To</Text>
         <Text style={styles.ownerName}>{ownerName}</Text>
         
-        <View style={styles.discInfoContainer}>
-          <Text style={styles.label}>Disc Name</Text>
-          <Text style={styles.value}>{discDetails.name}</Text>
-          
-          <Text style={styles.label}>Company</Text>
-          <Text style={styles.value}>{discDetails.manufacturer}</Text>
-        </View>
+        <View style={styles.contentRow}>
+          <View style={styles.discInfoContainer}>
+            <Text style={styles.label}>Disc Name</Text>
+            <Text style={styles.value}>{discDetails.name}</Text>
+            
+            <Text style={styles.label}>Company</Text>
+            <Text style={styles.value}>{discDetails.manufacturer}</Text>
+          </View>
 
-        <View style={styles.discImageContainer}>
-          <Image 
-            source={getDiscImage(discDetails.color)}
-            style={styles.discImage}
-            resizeMode="contain"
-          />
+          <View style={styles.discImageContainer}>
+            <Image 
+              source={getDiscImage(discDetails.color)}
+              style={styles.discImage}
+              resizeMode="contain"
+            />
+          </View>
         </View>
 
         <View style={styles.contactInfoContainer}>
@@ -204,9 +206,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 32,
   },
-  discInfoContainer: {
+  contentRow: {
+    flexDirection: 'row',
     width: '100%',
     marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  discInfoContainer: {
+    flex: 1,
+    marginRight: 16,
   },
   label: {
     fontFamily: 'LeagueSpartan_400Regular',
@@ -221,13 +230,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   discImageContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
     overflow: 'hidden',
   },
   discImage: {

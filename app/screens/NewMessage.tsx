@@ -69,26 +69,67 @@ const NewMessage = () => {
     searchUsers('');
   }, []);
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    const searchTerm = text.toLowerCase();
-    const filtered = users.filter(user => 
-      user.username.toLowerCase().includes(searchTerm)
-    );
-    setFilteredUsers(filtered);
+  const handleUserSelect = (user: User) => {
+    setSelectedUser(user);
+    setSearchQuery(user.username);
   };
 
-  const handleSend = async () => {
-    if (!selectedUser || !message.trim()) return;
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    if (text.length > 0) {
+      if (selectedUser && text === selectedUser.username) {
+        setFilteredUsers([]);
+        return;
+      }
 
+      const searchTerm = text.toLowerCase();
+      const filtered = users.filter(user => 
+        user.username.toLowerCase().includes(searchTerm)
+      );
+      setFilteredUsers(filtered);
+    } else {
+      setFilteredUsers([]);
+      setSelectedUser(null);
+    }
+  };
+
+  const handleSendMessage = async (receiverId: string, message: string) => {
     try {
-      console.log('Sending message:', {
-        receiverId: selectedUser.id,
-        message: message,
-        selectedUser
+      const currentUser = FIREBASE_AUTH.currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'You must be logged in to send messages');
+        return;
+      }
+
+      await sendMessage(receiverId, message);
+      
+      // Create conversation ID by sorting UIDs to ensure consistency
+      const conversationId = [currentUser.uid, receiverId].sort().join('_');
+      
+      // Reset navigation stack to Messages, then navigate to MessageDetail
+      navigation.reset({
+        index: 1,
+        routes: [
+          { 
+            name: 'BottomTabs',
+            state: {
+              routes: [
+                { name: 'Messages', params: { screen: 'MessagesScreen' } }
+              ]
+            }
+          },
+          {
+            name: 'MessageDetail',
+            params: {
+              messageId: conversationId,
+              receiverInfo: {
+                id: receiverId,
+                name: selectedUser?.username || 'Unknown User'
+              }
+            }
+          }
+        ]
       });
-      await sendMessage(selectedUser.id, message);
-      navigation.goBack();
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -101,7 +142,7 @@ const NewMessage = () => {
         styles.userItem,
         selectedUser?.id === user.id && styles.selectedUser
       ]}
-      onPress={() => setSelectedUser(user)}
+      onPress={() => handleUserSelect(user)}
     >
       <View style={styles.userInfo}>
         <Text style={styles.userName}>@{user.username}</Text>
@@ -130,7 +171,7 @@ const NewMessage = () => {
               />
             </View>
             
-            {searchQuery.length > 0 && (
+            {searchQuery.length > 0 && !selectedUser && (
               <FlatList
                 data={filteredUsers}
                 renderItem={renderUser}
@@ -160,7 +201,7 @@ const NewMessage = () => {
                 />
                 
                 <TouchableOpacity
-                  onPress={handleSend}
+                  onPress={() => handleSendMessage(selectedUser.id, message)}
                   disabled={!message.trim()}
                 >
                   <LinearGradient
