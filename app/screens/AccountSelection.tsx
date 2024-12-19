@@ -4,9 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
-import { Ionicons } from '@expo/vector-icons';
-import { Feather } from '@expo/vector-icons';
-import { MaterialIcons } from '@expo/vector-icons';
 
 const AccountSelection = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -78,32 +75,6 @@ const AccountSelection = () => {
           </View>
         </View>
       </View>
-
-      {/* Navigation Bar */}
-      <View style={styles.navbar}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#A1A1AA" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="camera" size={24} color="#A1A1AA" />
-        </TouchableOpacity>
-        <View style={styles.centerButton}>
-          <LinearGradient
-            colors={['#44FFA1', '#4D9FFF']}
-            style={styles.centerButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Feather name="shopping-bag" size={28} color="#000000" />
-          </LinearGradient>
-        </View>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="globe" size={24} color="#A1A1AA" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="settings" size={24} color="#A1A1AA" />
-        </TouchableOpacity>
-      </View>
     </LinearGradient>
   );
 };
@@ -127,6 +98,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     marginTop: '35%',
+    paddingBottom: 100,
   },
   title: {
     fontFamily: 'LeagueSpartan_700Bold',
@@ -159,30 +131,6 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_700Bold',
     color: '#000000',
     fontSize: 18,
-  },
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(39, 39, 42, 0.5)',
-    backgroundColor: 'rgba(9, 9, 11, 0.8)',
-  },
-  navItem: {
-    padding: 12,
-  },
-  centerButton: {
-    marginTop: 0,
-  },
-  centerButtonGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#09090B',
   },
 });
 

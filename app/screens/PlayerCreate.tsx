@@ -163,7 +163,11 @@ const PlayerCreate = () => {
       </View>
 
       {/* Form */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Username*</Text>
@@ -387,9 +391,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 32,
   },
+  scrollViewContent: {
+    paddingBottom: 120,
+  },
   form: {
     paddingHorizontal: 32,
-    paddingBottom: 32,
   },
   inputContainer: {
     marginBottom: 16,

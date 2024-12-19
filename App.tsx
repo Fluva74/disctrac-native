@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StatusBar, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './app/contexts/AuthContext';
 import { MessageProvider } from './app/contexts/MessageContext';
 import { NotificationProvider, useNotifications } from './app/contexts/NotificationContext';
+import { StoreNotificationProvider } from './app/contexts/StoreNotificationContext';
 
 // Import all screens
 import Login from './app/screens/Login';
@@ -14,6 +15,8 @@ import StoreCreate from './app/screens/StoreCreate';
 import PlayerStackNavigator from './app/stacks/PlayerStack';
 import StoreStackNavigator from './app/stacks/StoreStack';
 import NotificationModal from './app/components/modals/NotificationModal';
+import { FIREBASE_DB } from './FirebaseConfig';
+import { getDoc, doc } from 'firebase/firestore';
 
 // If you're using Expo
 // import * as NavigationBar from 'expo-navigation-bar';
@@ -23,9 +26,27 @@ export type RootStackParamList = {
   AccountSelection: undefined;
   PlayerCreate: undefined;
   StoreCreate: undefined;
+  Inside: {
+    screen: string;
+    params?: {
+      screen: string;
+      params?: {
+        screen: string;
+      };
+    };
+  };
   ForgotPassword: undefined;
   PlayerStack: undefined | { screen?: string; params?: any };
-  StoreStack: undefined | { screen?: string; params?: any };
+  StoreStack: {
+    screen: 'StoreBottomTabs';
+    params: {
+      screen: string;
+    };
+  };
+  StoreBottomTabs: {
+    screen?: string;
+    params?: any;
+  };
 };
 
 export type InsideStackParamList = {
@@ -77,15 +98,61 @@ export type InsideStackParamList = {
     };
   };
   NewMessage: undefined;
+  StoreBottomTabs: {
+    screen: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Create a separate navigator component that uses the auth context
 function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [isStoreAccount, setIsStoreAccount] = useState<boolean | null>(null);
+  const [roleCheckComplete, setRoleCheckComplete] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (user) {
+        console.log('=== Checking User Role ===');
+        try {
+          const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
+          const isStore = storeDoc.exists();
+          console.log('User ID:', user.uid);
+          console.log('Is store account:', isStore);
+          setIsStoreAccount(isStore);
+          console.log('Navigation should go to:', isStore ? 'StoreStack' : 'PlayerStack');
+        } catch (error) {
+          console.error('Error checking user role:', error);
+          setIsStoreAccount(false); // Default to player on error
+        } finally {
+          setRoleCheckComplete(true);
+        }
+      } else {
+        setIsStoreAccount(null);
+        setRoleCheckComplete(true);
+      }
+    };
+    
+    checkUserRole();
+  }, [user]);
+
+  // Debug logs
+  useEffect(() => {
+    console.log('=== Navigation State ===');
+    console.log('Auth loading:', authLoading);
+    console.log('Role check complete:', roleCheckComplete);
+    console.log('User exists:', !!user);
+    console.log('Is store account:', isStoreAccount);
+    console.log('Should navigate to:', 
+      !user ? 'Login' : 
+      isStoreAccount ? 'StoreStack' : 
+      'PlayerStack'
+    );
+  }, [authLoading, roleCheckComplete, user, isStoreAccount]);
+
+  // Show loading state while either auth is loading or we're checking the role
+  if (authLoading || !roleCheckComplete) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#09090B' }}>
         <ActivityIndicator size="large" color="#44FFA1" />
@@ -96,7 +163,7 @@ function RootNavigator() {
   return (
     <Stack.Navigator 
       screenOptions={{ headerShown: false }}
-      initialRouteName={user ? "PlayerStack" : "Login"}
+      initialRouteName={!user ? 'Login' : (isStoreAccount ? 'StoreStack' : 'PlayerStack')}
     >
       {!user ? (
         // Auth screens
@@ -139,10 +206,12 @@ export default function App() {
       />
       <AuthProvider>
         <NotificationProvider>
-          <MessageProvider>
-            <RootNavigator />
-            <NotificationOverlay />
-          </MessageProvider>
+          <StoreNotificationProvider>
+            <MessageProvider>
+              <RootNavigator />
+              <NotificationOverlay />
+            </MessageProvider>
+          </StoreNotificationProvider>
         </NotificationProvider>
       </AuthProvider>
     </NavigationContainer>
@@ -162,11 +231,12 @@ function NotificationOverlay() {
   console.log('Showing notification modal for:', currentNotification.discName);
   return (
     <NotificationModal
-      visible={true}  // Force this to true since we have a notification
+      visible={true}
       onClose={dismissNotification}
       onReleaseDisc={() => handleReleaseDisc(currentNotification.discId)}
       discName={currentNotification.discName}
       company={currentNotification.company}
+      color={currentNotification.color}
     />
   );
 }

@@ -1,17 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, Platform, StatusBar, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { Logo } from './Logo';
+import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
+import { getDoc, doc } from 'firebase/firestore';
 
 interface ScreenTemplateProps {
   children: React.ReactNode;
   title?: string;
+  showBackButton?: boolean;
 }
 
-const ScreenTemplate = ({ children }: ScreenTemplateProps) => {
+const ScreenTemplate: React.FC<ScreenTemplateProps> = ({ children, showBackButton = false }) => {
+  console.log('=== Screen Template Render ===');
   const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
+  const user = FIREBASE_AUTH.currentUser;
+  console.log('Current user in template:', user?.uid);
+
+  useEffect(() => {
+    const checkUserType = async () => {
+      if (user) {
+        const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
+        console.log('User type check:', {
+          isStore: storeDoc.exists(),
+          userId: user.uid
+        });
+      }
+    };
+    checkUserType();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -1,19 +1,25 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import PlayerHome from '../screens/PlayerHome';
-import Inventory from '../screens/Inventory';
+import StoreHome from '../screens/StoreHome';
+import StoreInventory from '../screens/StoreInventory';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
 import Resources from '../screens/Resources';
 import Messages from '../screens/Messages';
-import ProVideos from '../screens/ProVideos';
-import AmateurVideos from '../screens/AmateurVideos';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 
 const Tab = createBottomTabNavigator();
 
-export default function BottomTabs() {
+export type StoreBottomTabParamList = {
+  Home: undefined;
+  Videos: undefined;
+  Inventory: undefined;
+  Resources: undefined;
+  Messages: undefined;
+};
+
+export default function StoreBottomTabs() {
   const { messages } = useMessages();
   const unreadCount = React.useMemo(() => {
     const currentUser = FIREBASE_AUTH.currentUser;
@@ -38,7 +44,7 @@ export default function BottomTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={PlayerHome}
+        component={StoreHome}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" color={color} size={size} />
@@ -55,8 +61,8 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Bag"
-        component={Inventory}
+        name="Inventory"
+        component={StoreInventory}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="disc" color={color} size={size} />

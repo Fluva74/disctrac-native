@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BaseModal from './BaseModal';
 import { capitalizeFirstLetter } from '../../utils/stringUtils';
+import { getDiscImage } from '../../utils/discUtils';
 
 interface NotificationModalProps {
   visible: boolean;
@@ -10,6 +11,7 @@ interface NotificationModalProps {
   onReleaseDisc: () => void;
   discName: string;
   company: string;
+  color: string;
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({
@@ -18,6 +20,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   onReleaseDisc,
   discName,
   company,
+  color,
 }) => {
   return (
     <BaseModal visible={visible} onClose={onClose}>
@@ -25,12 +28,20 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
         <Text style={styles.title}>Time to Celebrate!</Text>
         <Text style={styles.subtitle}>Your Disc Has Been Found!</Text>
 
-        <View style={styles.discInfo}>
-          <Text style={styles.label}>Disc Name</Text>
-          <Text style={styles.value}>{capitalizeFirstLetter(discName)}</Text>
+        <View style={styles.contentContainer}>
+          <View style={styles.discInfo}>
+            <Text style={styles.label}>Disc Name</Text>
+            <Text style={styles.value}>{capitalizeFirstLetter(discName)}</Text>
 
-          <Text style={styles.label}>Company</Text>
-          <Text style={styles.value}>{company}</Text>
+            <Text style={styles.label}>Company</Text>
+            <Text style={styles.value}>{company}</Text>
+          </View>
+
+          <Image 
+            source={getDiscImage(color)} 
+            style={styles.discImage}
+            resizeMode="contain"
+          />
         </View>
 
         <Text style={styles.message}>
@@ -82,9 +93,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 24,
   },
-  discInfo: {
+  contentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     width: '100%',
     marginBottom: 24,
+  },
+  discInfo: {
+    flex: 1,
+    marginRight: 16,
   },
   label: {
     fontFamily: 'LeagueSpartan_400Regular',
@@ -134,6 +151,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     textAlign: 'center',
+  },
+  discImage: {
+    width: 80,
+    height: 80,
   },
 });
 

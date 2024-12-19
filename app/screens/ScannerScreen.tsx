@@ -8,6 +8,8 @@ import { InsideStackParamList } from '../../App';
 import { DiscFoundModal } from '../components/modals';
 import { InvalidQRModal } from '../components/modals';
 import { AddDiscConfirmationModal } from '../components/modals';
+import DiscWaitingForReleaseModal from '../components/modals/DiscWaitingForReleaseModal';
+import { getAuth } from 'firebase/auth';
 
 const ScannerScreen = () => {
   const [hasPermission, requestPermission] = useCameraPermissions();
@@ -33,6 +35,8 @@ const ScannerScreen = () => {
   const [showInvalidQRModal, setShowInvalidQRModal] = useState(false);
   const [showAddDiscModal, setShowAddDiscModal] = useState(false);
   const [scannedQRData, setScannedQRData] = useState<string | null>(null);
+  const [showWaitingForReleaseModal, setShowWaitingForReleaseModal] = useState(false);
+  const [storeInfo, setStoreInfo] = useState<{ name: string }>({ name: 'store' });
 
   React.useEffect(() => {
     if (!hasPermission) {
@@ -41,95 +45,97 @@ const ScannerScreen = () => {
   }, [hasPermission]);
 
   const handleBarcodeScanned = async (data: string) => {
-    setLoading(true);
+    if (!scannedQRData) {
+      setScannedQRData(data);
+      setLoading(true);
 
-    try {
-      const user = FIREBASE_AUTH.currentUser;
-      if (!user) {
-        navigation.getParent()?.navigate('BottomTabs', {
-          screen: 'Bag',
-          params: {
-            showAlert: true,
-            alertTitle: 'Error',
-            alertMessage: 'No user is logged in.'
+      try {
+        // First check if disc is in store inventory
+        const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', data);
+        const storeDoc = await getDoc(storeInventoryRef);
+
+        if (storeDoc.exists()) {
+          // Get store info if available
+          if (storeDoc.data().storeId) {
+            const storeRef = doc(FIREBASE_DB, 'stores', storeDoc.data().storeId);
+            const storeData = await getDoc(storeRef);
+            if (storeData.exists()) {
+              setStoreInfo({ name: storeData.data().name || 'store' });
+            }
           }
-        });
-        return;
-      }
-
-      const userId = user.uid;
-
-      // First check playerDiscs collection
-      const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
-      const playerDiscsQuery = query(playerDiscsRef, where('uid', '==', data));
-      const playerDiscsSnapshot = await getDocs(playerDiscsQuery);
-
-      if (!playerDiscsSnapshot.empty) {
-        // Disc exists in playerDiscs collection
-        const discData = playerDiscsSnapshot.docs[0].data();
-        
-        if (discData.userId === userId) {
-          navigation.getParent()?.navigate('BottomTabs', {
-            screen: 'Bag',
-            params: {
-              showAlert: true,
-              alertTitle: 'Already Added',
-              alertMessage: 'This disc is already in your bag.'
-            }
-          });
-        } else {
-          // Get owner's name
-          const ownerDoc = await getDoc(doc(FIREBASE_DB, 'players', discData.userId));
-          const ownerData = ownerDoc.exists() ? ownerDoc.data() : null;
           
-          setFoundDiscData({
-            ownerName: ownerData?.username || 'Unknown Player',
-            userId: discData.userId,
-            discId: discData.uid,
-            discDetails: {
-              name: discData.name,
-              manufacturer: discData.manufacturer,
-              color: discData.color
-            },
-            contactInfo: {
-              email: ownerData?.email,
-              phone: ownerData?.phone,
-              inApp: true,
-              preferredMethod: ownerData?.contactPreferences?.preferred || 'inApp'
-            }
-          });
-          setShowDiscFoundModal(true);
+          setShowWaitingForReleaseModal(true);
+          setScannedQRData(null);
+          setLoading(false);
+          return;
         }
-        return;
-      }
 
-      // If we get here, the disc isn't in any player's bag
-      // Check if it exists in the buildQrCodes collection
-      const buildQrCodesRef = collection(FIREBASE_DB, 'buildQrCodes');
-      const buildQrCodesQuery = query(buildQrCodesRef, where('devId', '==', data));
-      const buildQrCodesSnapshot = await getDocs(buildQrCodesQuery);
+        // Then check playerDiscs
+        const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
+        const q = query(playerDiscsRef, where('uid', '==', data));
+        const querySnapshot = await getDocs(q);
 
-      if (buildQrCodesSnapshot.empty) {
-        setShowInvalidQRModal(true);
-        return;
-      } else {
-        setScannedQRData(data);
-        setShowAddDiscModal(true);
-        return;
-      }
-
-    } catch (error) {
-      console.error('Scan error:', error);
-      navigation.getParent()?.navigate('BottomTabs', {
-        screen: 'Bag',
-        params: {
-          showAlert: true,
-          alertTitle: 'Error',
-          alertMessage: 'Failed to check disc assignment.'
+        if (!querySnapshot.empty) {
+          // Disc exists in playerDiscs collection
+          const discData = querySnapshot.docs[0].data();
+          const { currentUser } = getAuth();
+          
+          if (discData.userId === currentUser?.uid) {
+            navigation.getParent()?.navigate('BottomTabs', {
+              screen: 'Bag',
+              params: {
+                showAlert: true,
+                alertTitle: 'Already Added',
+                alertMessage: 'This disc is already in your bag.'
+              }
+            });
+          } else {
+            // Get owner's name
+            const ownerDoc = await getDoc(doc(FIREBASE_DB, 'players', discData.userId));
+            const ownerData = ownerDoc.exists() ? ownerDoc.data() : null;
+            
+            setFoundDiscData({
+              ownerName: ownerData?.username || 'Unknown Player',
+              userId: discData.userId,
+              discId: discData.uid,
+              discDetails: {
+                name: discData.name,
+                manufacturer: discData.manufacturer,
+                color: discData.color
+              },
+              contactInfo: {
+                email: ownerData?.email,
+                phone: ownerData?.phone,
+                inApp: true,
+                preferredMethod: ownerData?.contactPreferences?.preferred || 'inApp'
+              }
+            });
+            setShowDiscFoundModal(true);
+          }
+          return;
         }
-      });
-    } finally {
-      setLoading(false);
+
+        // If we get here, the disc isn't in any player's bag
+        // Check if it exists in the buildQrCodes collection
+        const buildQrCodesRef = collection(FIREBASE_DB, 'buildQrCodes');
+        const buildQrCodesQuery = query(buildQrCodesRef, where('devId', '==', data));
+        const buildQrCodesSnapshot = await getDocs(buildQrCodesQuery);
+
+        if (buildQrCodesSnapshot.empty) {
+          setShowInvalidQRModal(true);
+          return;
+        } else {
+          setScannedQRData(data);
+          setShowAddDiscModal(true);
+          return;
+        }
+
+      } catch (error) {
+        console.error('Error scanning disc:', error);
+        Alert.alert('Error', 'Failed to scan disc. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -233,6 +239,15 @@ const ScannerScreen = () => {
             navigation.navigate('AddDisc', { scannedData: scannedQRData });
           }
         }}
+      />
+
+      <DiscWaitingForReleaseModal
+        visible={showWaitingForReleaseModal}
+        onClose={() => {
+          setShowWaitingForReleaseModal(false);
+          setStoreInfo({ name: 'store' });
+        }}
+        storeName={storeInfo.name}
       />
     </View>
   );
