@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './app/contexts/AuthContext';
 import { MessageProvider } from './app/contexts/MessageContext';
 import { NotificationProvider, useNotifications } from './app/contexts/NotificationContext';
 import { StoreNotificationProvider } from './app/contexts/StoreNotificationContext';
+import { StoreProfile } from './app/types/Profile';
 
 // Import all screens
 import Login from './app/screens/Login';
@@ -101,6 +102,8 @@ export type InsideStackParamList = {
   StoreBottomTabs: {
     screen: string;
   };
+  StoreDetails: undefined;
+  EditStoreProfile: { profile: StoreProfile };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

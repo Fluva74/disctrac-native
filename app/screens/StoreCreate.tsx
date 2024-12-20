@@ -21,7 +21,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const states = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -32,15 +32,18 @@ const states = [
 ];
 
 const StoreCreate = () => {
-    const [storeName, setStoreName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [storeName, setStoreName] = useState('');
+    const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
     const [state, setState] = useState('');
+    const [holdTime, setHoldTime] = useState('3');
     const [isStateModalVisible, setIsStateModalVisible] = useState(false);
     const [stateSearch, setStateSearch] = useState('');
+    const [showHoldTimeTooltip, setShowHoldTimeTooltip] = useState(false);
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     const checkUsernameAvailability = async (username: string) => {
@@ -69,8 +72,13 @@ const StoreCreate = () => {
             });
 
             // Validation checks
-            if (!storeName || !username || !email || !password || !confirmPassword || !city || !state) {
-                Alert.alert('Error', 'Please fill all required fields');
+            if (!username || !email || !password || !confirmPassword) {
+                Alert.alert('Error', 'Please fill all account fields');
+                return;
+            }
+
+            if (!storeName || !address || !city || !state || !holdTime) {
+                Alert.alert('Error', 'Please fill all store details');
                 return;
             }
 
@@ -96,13 +104,20 @@ const StoreCreate = () => {
 
             const storeData = {
                 uid: userCredential.user.uid,
-                storeName,
                 username: username.toLowerCase(),
                 email,
+                storeName,
+                address,
                 city,
                 state,
+                holdTime: parseInt(holdTime),
                 role: 'store',
                 createdAt: new Date().toISOString(),
+                contactPreferences: {
+                    email: true,
+                    phone: false,
+                    inApp: true,
+                },
             };
 
             console.log('Creating store document:', {
@@ -175,90 +190,137 @@ const StoreCreate = () => {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.form}>
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Username*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter username"
-                            placeholderTextColor="#A1A1AA"
-                            value={username}
-                            onChangeText={setUsername}
-                            autoCapitalize="none"
-                        />
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Account Details</Text>
+                        
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Username*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter username"
+                                placeholderTextColor="#A1A1AA"
+                                value={username}
+                                onChangeText={setUsername}
+                                autoCapitalize="none"
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Email*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter email"
+                                placeholderTextColor="#A1A1AA"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Password*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter password"
+                                placeholderTextColor="#A1A1AA"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Confirm Password*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Confirm password"
+                                placeholderTextColor="#A1A1AA"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry
+                            />
+                        </View>
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Store Name*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter store name"
-                            placeholderTextColor="#666666"
-                            value={storeName}
-                            onChangeText={setStoreName}
-                        />
-                    </View>
+                    <View style={[styles.section, styles.storeSection]}>
+                        <Text style={styles.sectionTitle}>Store Details</Text>
+                        <Text style={styles.sectionSubtitle}>All fields required</Text>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter email"
-                            placeholderTextColor="#666666"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Store Name*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter store name"
+                                placeholderTextColor="#A1A1AA"
+                                value={storeName}
+                                onChangeText={setStoreName}
+                            />
+                        </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter password"
-                            placeholderTextColor="#666666"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                        />
-                    </View>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Store Address*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter store address"
+                                placeholderTextColor="#A1A1AA"
+                                value={address}
+                                onChangeText={setAddress}
+                            />
+                        </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Confirm Password*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Confirm password"
-                            placeholderTextColor="#666666"
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            secureTextEntry
-                        />
-                    </View>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>City*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter city"
+                                placeholderTextColor="#A1A1AA"
+                                value={city}
+                                onChangeText={setCity}
+                            />
+                        </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>City*</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter city"
-                            placeholderTextColor="#666666"
-                            value={city}
-                            onChangeText={setCity}
-                        />
-                    </View>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>State*</Text>
+                            <TouchableOpacity
+                                style={styles.input}
+                                onPress={() => setIsStateModalVisible(true)}
+                            >
+                                <Text style={[
+                                    styles.inputText,
+                                    !state && styles.placeholderText
+                                ]}>
+                                    {state || "Select your state"}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>State*</Text>
-                        <TouchableOpacity
-                            style={styles.input}
-                            onPress={() => setIsStateModalVisible(true)}
-                        >
-                            <Text style={[
-                                styles.inputText,
-                                !state && styles.placeholderText
-                            ]}>
-                                {state || "Select your state"}
+                        <View style={styles.inputContainer}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.label}>Hold Time (Days)*</Text>
+                                <TouchableOpacity 
+                                    onPress={() => setShowHoldTimeTooltip(true)}
+                                    style={styles.tooltipButton}
+                                >
+                                    <MaterialCommunityIcons 
+                                        name="information" 
+                                        size={20} 
+                                        color="#44FFA1" 
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter hold time in days"
+                                placeholderTextColor="#A1A1AA"
+                                value={holdTime}
+                                onChangeText={setHoldTime}
+                                keyboardType="numeric"
+                            />
+                            <Text style={styles.helpText}>
+                                This can be changed later in store settings
                             </Text>
-                        </TouchableOpacity>
+                        </View>
                     </View>
 
                     <LinearGradient
@@ -268,7 +330,7 @@ const StoreCreate = () => {
                         style={styles.gradient}
                     >
                         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                            <Text style={styles.buttonText}>Sign Up</Text>
+                            <Text style={styles.buttonText}>Create Store Account</Text>
                         </TouchableOpacity>
                     </LinearGradient>
                 </View>
@@ -317,6 +379,32 @@ const StoreCreate = () => {
                         />
                     </View>
                 </View>
+            </Modal>
+
+            <Modal
+                visible={showHoldTimeTooltip}
+                animationType="fade"
+                transparent={true}
+            >
+                <TouchableOpacity 
+                    style={styles.tooltipModal}
+                    activeOpacity={1}
+                    onPress={() => setShowHoldTimeTooltip(false)}
+                >
+                    <View style={styles.tooltipContent}>
+                        <Text style={styles.tooltipTitle}>Hold Time</Text>
+                        <Text style={styles.tooltipText}>
+                            This is the number of days your store will hold a disc after notifying its owner. 
+                            After this period, if the owner hasn't claimed their disc, it will be automatically released.
+                        </Text>
+                        <TouchableOpacity 
+                            style={styles.tooltipButton}
+                            onPress={() => setShowHoldTimeTooltip(false)}
+                        >
+                            <Text style={styles.tooltipButtonText}>Got it</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
             </Modal>
         </LinearGradient>
     );
@@ -448,6 +536,77 @@ const styles = StyleSheet.create({
         fontFamily: 'LeagueSpartan_400Regular',
         fontSize: 16,
         color: '#FFFFFF',
+    },
+    section: {
+        marginBottom: 32,
+    },
+    storeSection: {
+        borderWidth: 1,
+        borderColor: 'rgba(68, 255, 161, 0.2)',
+        borderRadius: 12,
+        padding: 16,
+    },
+    sectionTitle: {
+        fontFamily: 'LeagueSpartan_700Bold',
+        fontSize: 20,
+        color: '#44FFA1',
+        marginBottom: 8,
+    },
+    sectionSubtitle: {
+        fontFamily: 'LeagueSpartan_400Regular',
+        fontSize: 14,
+        color: '#A1A1AA',
+        marginBottom: 16,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    tooltipButton: {
+        padding: 4,
+    },
+    helpText: {
+        fontFamily: 'LeagueSpartan_400Regular',
+        fontSize: 12,
+        color: '#A1A1AA',
+        marginTop: 4,
+    },
+    tooltipModal: {
+        flex: 1,
+        backgroundColor: 'rgba(9, 9, 11, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+    },
+    tooltipContent: {
+        backgroundColor: '#18181B',
+        borderRadius: 12,
+        padding: 16,
+        width: '90%',
+        maxWidth: 400,
+        borderWidth: 1,
+        borderColor: '#44FFA1',
+    },
+    tooltipTitle: {
+        fontFamily: 'LeagueSpartan_700Bold',
+        fontSize: 18,
+        color: '#44FFA1',
+        marginBottom: 8,
+    },
+    tooltipText: {
+        fontFamily: 'LeagueSpartan_400Regular',
+        fontSize: 14,
+        color: '#FFFFFF',
+        marginBottom: 16,
+        lineHeight: 20,
+    },
+    tooltipButtonText: {
+        fontFamily: 'LeagueSpartan_700Bold',
+        fontSize: 16,
+        color: '#44FFA1',
+        textAlign: 'center',
     },
 });
 

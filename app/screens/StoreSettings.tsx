@@ -1,33 +1,52 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { signOut } from 'firebase/auth';
-import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { FIREBASE_AUTH } from '../../FirebaseConfig';
 import ScreenTemplate from '../components/ScreenTemplate';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { StoreStackParamList } from '../stacks/StoreStack';
+
+type StoreNavigationProp = NativeStackNavigationProp<StoreStackParamList>;
 
 const StoreSettings = () => {
-  const navigation = useNavigation();
+  console.log('\n=== StoreSettings Screen ===');
+  console.log('Rendering StoreSettings component');
+  const navigation = useNavigation<StoreNavigationProp>();
 
   const handleSignOut = async () => {
+    console.log('Attempting sign out');
     try {
-      await signOut(FIREBASE_AUTH);
-      navigation.getParent()?.navigate('Login');
+      await FIREBASE_AUTH.signOut();
+      console.log('Sign out successful');
     } catch (error) {
-      console.error("Error signing out:", error);
-      Alert.alert("Error", "Failed to sign out. Please try again.");
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
 
   return (
     <ScreenTemplate>
       <View style={styles.container}>
-        <Text style={styles.title}>Settings</Text>
-        <TouchableOpacity 
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>Store Settings</Text>
+
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.option}
+            onPress={() => navigation.navigate('StoreDetails')}
+          >
+            <MaterialCommunityIcons name="account" size={24} color="#FFFFFF" />
+            <Text style={styles.optionText}>Store Details</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.option}
+            onPress={handleSignOut}
+          >
+            <MaterialCommunityIcons name="logout" size={24} color="#FF6B6B" />
+            <Text style={[styles.optionText, styles.logoutText]}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScreenTemplate>
   );
@@ -40,22 +59,30 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'LeagueSpartan_700Bold',
-    fontSize: 32,
+    fontSize: 24,
     color: '#FFFFFF',
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  signOutButton: {
-    padding: 16,
+  section: {
     backgroundColor: 'rgba(24, 24, 27, 0.5)',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(68, 255, 161, 0.2)',
+    overflow: 'hidden',
   },
-  signOutText: {
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272A',
+  },
+  optionText: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
+    color: '#FFFFFF',
+    marginLeft: 16,
+  },
+  logoutText: {
     color: '#FF6B6B',
-    textAlign: 'center',
   },
 });
 

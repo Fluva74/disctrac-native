@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { collection, onSnapshot, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc, getDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { InsideStackParamList } from '../../App';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,7 @@ interface DiscItem {
   uid: string;
   userId: string;
   notifiedAt: string;
+  storeId: string;
   ownerUsername?: string;
   ownerEmail?: string;
   ownerPhone?: string;
@@ -41,74 +42,58 @@ interface DiscItem {
   notes?: string;
 }
 
+interface FilteredDiscItem extends Omit<DiscItem, 'ownerUsername' | 'ownerEmail' | 'ownerPhone' | 'contactPreferences'> {
+  storeId: string;
+  ownerUsername: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  contactPreferences: {
+    email: boolean;
+    phone: boolean;
+    inApp: boolean;
+  };
+}
+
 const StoreInventory = () => {
   const navigation = useNavigation<NavigationProp<InsideStackParamList>>();
-  const [notifiedDiscs, setNotifiedDiscs] = useState<DiscItem[]>([]);
-  const [releasedDiscs, setReleasedDiscs] = useState<DiscItem[]>([]);
+  const [notifiedDiscs, setNotifiedDiscs] = useState<FilteredDiscItem[]>([]);
+  const [releasedDiscs, setReleasedDiscs] = useState<FilteredDiscItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDisc, setSelectedDisc] = useState<DiscItem | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  const DEBUG_TAG = '🏪 [StoreInventory]';
+
+  // Single useEffect for data fetching
   useEffect(() => {
     const user = FIREBASE_AUTH.currentUser;
     if (!user) return;
 
+    // Simple query for discs belonging to this store
     const storeInventoryRef = collection(FIREBASE_DB, 'storeInventory');
-    
-    const unsubscribe = onSnapshot(storeInventoryRef, async (querySnapshot) => {
-      const allDiscsPromises = querySnapshot.docs.map(async (docSnapshot) => {
-        const discData = docSnapshot.data();
-        
-        // Fetch owner's information
-        try {
-          const playerDocRef = doc(FIREBASE_DB, 'players', discData.userId);
-          const playerDoc = await getDoc(playerDocRef);
-          const playerData = playerDoc.exists() ? playerDoc.data() : null;
+    const storeQuery = query(
+      storeInventoryRef,
+      where('storeId', '==', user.uid)
+    );
 
-          return {
-            id: docSnapshot.id,
-            ...discData,
-            ownerUsername: playerData?.username || 'Unknown',
-            ownerEmail: playerData?.email,
-            ownerPhone: playerData?.phone,
-            contactPreferences: playerData?.contactPreferences || {
-              email: false,
-              phone: false,
-              inApp: false
-            },
-          };
-        } catch (error) {
-          console.error('Error fetching player data:', error);
-          return {
-            id: docSnapshot.id,
-            ...discData,
-            ownerUsername: 'Unknown',
-          };
+    const unsubscribe = onSnapshot(storeQuery, (snapshot) => {
+      const processedDiscs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        ownerUsername: doc.data().ownerUsername || 'Unknown',
+        ownerEmail: doc.data().ownerEmail || '',
+        ownerPhone: doc.data().ownerPhone || '',
+        contactPreferences: {
+          email: false,
+          phone: false,
+          inApp: true
         }
-      });
+      })) as FilteredDiscItem[];
 
-      const allDiscs = await Promise.all(allDiscsPromises) as DiscItem[];
-
-      const notified = allDiscs
-        .filter(
-          (disc) =>
-            disc.status === 'notifiedPlayer' ||
-            disc.status === 'yellowAlert' ||
-            disc.status === 'criticalAlert'
-        )
-        .sort((a, b) => {
-          const statusPriority: Record<string, number> = {
-            criticalAlert: 1,
-            yellowAlert: 2,
-            notifiedPlayer: 3,
-          };
-          const priorityA = statusPriority[a.status] || 0;
-          const priorityB = statusPriority[b.status] || 0;
-
-          return priorityA - priorityB || new Date(a.notifiedAt).getTime() - new Date(b.notifiedAt).getTime();
-        });
-
-      const released = allDiscs.filter((disc) => disc.status === 'released');
+      const notified = processedDiscs.filter(disc => 
+        ['notifiedPlayer', 'yellowAlert', 'criticalAlert'].includes(disc.status)
+      );
+      const released = processedDiscs.filter(disc => disc.status === 'released');
 
       setNotifiedDiscs(notified);
       setReleasedDiscs(released);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
 import { capitalizeFirstLetter } from '../utils/stringUtils';
+import debounce from 'lodash.debounce';
 
 // Static imports for selected color images
 const colorImages = {
@@ -103,61 +104,75 @@ const AddDisc = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [allDiscs, setAllDiscs] = useState<Suggestion[]>([]);
 
-  const fetchNameSuggestions = useCallback(async (text: string) => {
-    if (!text || text.length < 2) {
+  // Load all discs once when component mounts
+  useEffect(() => {
+    const loadAllDiscs = async () => {
+      try {
+        const discsRef = collection(FIREBASE_DB, 'discs');
+        const querySnapshot = await getDocs(discsRef);
+        
+        const discs = querySnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            return data?.name ? {
+              id: doc.id,
+              title: data.name,
+              manufacturer: data.manufacturer
+            } : null;
+          })
+          .filter((disc): disc is Suggestion => disc !== null);
+
+        setAllDiscs(discs);
+      } catch (error) {
+        console.error('Error loading discs:', error);
+      }
+    };
+
+    loadAllDiscs();
+  }, []);
+
+  // Create a memoized search function
+  const searchDiscs = useCallback((searchText: string) => {
+    if (!searchText || searchText.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
-    try {
-      const discsRef = collection(FIREBASE_DB, 'discs');
-      const lowercaseText = text.toLowerCase();
-      
-      const querySnapshot = await getDocs(discsRef);
-      
-      const fetchedSuggestions = querySnapshot.docs
-        .map(doc => {
-          const data = doc.data();
-          // Only process docs that have the required data
-          if (!data?.name) return null;
-          
-          return {
-            id: doc.id,
-            title: data.name,
-            manufacturer: data.manufacturer
-          };
-        })
-        .filter((suggestion): suggestion is Suggestion => {
-          // Remove null values and filter by search text
-          return suggestion !== null && 
-                 suggestion.title.toLowerCase().includes(lowercaseText);
-        });
+    const lowercaseText = searchText.toLowerCase();
+    const matches = allDiscs.filter(disc => 
+      disc.title.toLowerCase().includes(lowercaseText)
+    );
 
-      console.log(`Found ${fetchedSuggestions.length} matches for "${text}"`);
-      
-      setSuggestions(fetchedSuggestions);
-      setShowSuggestions(fetchedSuggestions.length > 0);
-    } catch (error: unknown) {
-      console.error('Error fetching suggestions:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', error.message);
-      }
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  }, []);
+    setSuggestions(matches);
+    setShowSuggestions(matches.length > 0);
+  }, [allDiscs]);
 
+  // Create a debounced version of the search
+  const debouncedSearch = useMemo(
+    () => debounce(searchText => searchDiscs(searchText), 300),
+    [searchDiscs]
+  );
+
+  // Update the handleNameChange function
   const handleNameChange = (text: string) => {
     setName(text);
     if (text.length >= 2) {
-      fetchNameSuggestions(text);
+      debouncedSearch(text);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
   };
+
+  // Clean up debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleNameSelect = (selectedName: string, selectedManufacturer: string) => {
     setName(selectedName);

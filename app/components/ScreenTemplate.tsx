@@ -6,6 +6,7 @@ import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { Logo } from './Logo';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { getDoc, doc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ScreenTemplateProps {
   children: React.ReactNode;
@@ -32,6 +33,38 @@ const ScreenTemplate: React.FC<ScreenTemplateProps> = ({ children, showBackButto
     checkUserType();
   }, []);
 
+  const handleSettingsPress = () => {
+    console.log('\n=== Settings Navigation ===');
+    const parentState = navigation.getParent()?.getState();
+    console.log('Parent Navigator State:', {
+      routes: parentState?.routes,
+      currentRoute: parentState?.routes[parentState.index]
+    });
+    
+    // Check if user is a store
+    const checkUserType = async () => {
+      if (user) {
+        const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
+        const isStore = storeDoc.exists();
+        console.log('Navigation User Check:', { isStore, userId: user.uid });
+
+        if (isStore) {
+          console.log('Detected Store User - navigating to StoreSettings');
+          navigation.getParent()?.navigate('StoreStack', {
+            screen: 'StoreSettings'
+          });
+        } else {
+          console.log('Detected Player User - navigating to Settings');
+          navigation.getParent()?.navigate('PlayerStack', {
+            screen: 'Settings'
+          });
+        }
+      }
+    };
+
+    checkUserType();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -41,7 +74,7 @@ const ScreenTemplate: React.FC<ScreenTemplateProps> = ({ children, showBackButto
             <Logo />
             <TouchableOpacity 
               style={styles.settingsButton}
-              onPress={() => navigation.navigate('Settings')}
+              onPress={handleSettingsPress}
             >
               <MaterialCommunityIcons name="cog" size={24} color="#44FFA1" />
             </TouchableOpacity>

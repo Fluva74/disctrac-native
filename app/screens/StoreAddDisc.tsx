@@ -63,32 +63,40 @@ const StoreAddDisc = () => {
   const fetchDiscData = async (scannedCode: string) => {
     setLoading(true);
     try {
-      // First check if disc is already in store inventory
-      const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', scannedCode);
-      const storeDoc = await getDoc(storeInventoryRef);
+      // First check if disc is already in ANY store's inventory
+      const storeInventoryRef = collection(FIREBASE_DB, 'storeInventory');
+      const storeQuery = query(
+        storeInventoryRef, 
+        where('uid', '==', scannedCode),
+        where('status', 'in', ['notifiedPlayer', 'yellowAlert', 'criticalAlert', 'released'])
+      );
+      const storeSnapshot = await getDocs(storeQuery);
       
-      if (storeDoc.exists()) {
-        const discData = storeDoc.data();
-        let message = '';
+      if (!storeSnapshot.empty) {
+        const storeDoc = storeSnapshot.docs[0];
+        const storeData = storeDoc.data();
+        
+        // Only proceed if this disc isn't in the current store's inventory
+        const currentUser = FIREBASE_AUTH.currentUser;
+        if (storeData.storeId !== currentUser?.uid) {
+          // Get store name
+          const storeRef = doc(FIREBASE_DB, 'stores', storeData.storeId);
+          const storeInfo = await getDoc(storeRef);
+          const storeName = storeInfo.exists() ? storeInfo.data().name : 'another store';
 
-        if (['notifiedPlayer', 'yellowAlert', 'criticalAlert'].includes(discData.status)) {
-          message = 'This disc is already in your inventory and awaiting response from the player.';
-        } else if (discData.status === 'released') {
-          message = 'This disc has been released and is awaiting removal from your inventory.';
+          setAlreadyNotifiedDisc({
+            name: storeData.name,
+            ownerName: storeData.ownerUsername || 'Unknown',
+            message: `This disc is already in ${storeName}'s inventory.`
+          });
+          setShowAlreadyNotifiedModal(true);
+          setScannedData(null);
+          setLoading(false);
+          return;
         }
-
-        setAlreadyNotifiedDisc({
-          name: discData.name,
-          ownerName: discData.ownerUsername || 'Unknown',
-          message
-        });
-        setShowAlreadyNotifiedModal(true);
-        setScannedData(null);
-        setLoading(false);
-        return;
       }
 
-      // Continue with existing disc lookup if not in store inventory
+      // Continue with existing disc lookup if not in any store's inventory
       const playerDiscsRef = collection(FIREBASE_DB, 'playerDiscs');
       const q = query(playerDiscsRef, where('uid', '==', scannedCode));
       const querySnapshot = await getDocs(q);
@@ -240,11 +248,44 @@ const StoreAddDisc = () => {
 
   const handleNotifyPlayer = async () => {
     try {
-      console.log('\n=== Starting Notification Process ===');
-      console.log('Current Store User:', FIREBASE_AUTH.currentUser?.uid);
+      const currentUser = FIREBASE_AUTH.currentUser;
+      if (!currentUser) {
+        console.log('No user found in handleNotifyPlayer');
+        return;
+      }
 
       if (discData) {
         const { userId, uid, name, manufacturer, color } = discData;
+
+        // Create a unique document ID for storeInventory
+        const storeInventoryId = `${currentUser.uid}_${uid}`;
+        console.log('Creating store inventory entry:', {
+          storeInventoryId,
+          storeId: currentUser.uid,
+          discId: uid
+        });
+
+        // Add to store inventory with a unique ID
+        const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', storeInventoryId);
+        const storeInventoryData = {
+          uid,
+          name: capitalizeFirstLetter(name),
+          manufacturer: capitalizeFirstLetter(manufacturer),
+          color: color.startsWith('disc') ? color : `disc${color.charAt(0).toUpperCase()}${color.slice(1)}`,
+          status: 'notifiedPlayer',
+          userId,
+          notifiedAt: new Date().toISOString(),
+          ownerUsername: discData.ownerUsername,
+          storeId: currentUser.uid,  // Explicitly set storeId
+        };
+
+        // Log before saving
+        console.log('Saving store inventory data:', storeInventoryData);
+        await setDoc(storeInventoryRef, storeInventoryData);
+
+        // Verify the save
+        const verifyDoc = await getDoc(storeInventoryRef);
+        console.log('Verified stored data:', verifyDoc.data());
 
         // Create notification data
         const notificationData = {
@@ -259,7 +300,7 @@ const StoreAddDisc = () => {
           discName: capitalizeFirstLetter(name),
           type: 'found',
           message: 'Your disc has been found at a store! The store will hold your disc until you choose your options.',
-          storeId: FIREBASE_AUTH.currentUser?.uid,
+          storeId: currentUser.uid,
           storeName: 'Store',
           scannerUserId: FIREBASE_AUTH.currentUser?.uid,
           scannerName: 'Store',
@@ -274,26 +315,6 @@ const StoreAddDisc = () => {
         await updateDoc(playerNotificationRef, {
           notification: notificationData
         });
-
-        // Add to store inventory first
-        console.log('\nAdding disc to store inventory...');
-        const storeInventoryRef = doc(FIREBASE_DB, 'storeInventory', uid);
-        const storeInventoryData = {
-          uid,
-          name: capitalizeFirstLetter(name),
-          manufacturer: capitalizeFirstLetter(manufacturer),
-          color: color.startsWith('disc') ? color : `disc${color.charAt(0).toUpperCase()}${color.slice(1)}`,
-          status: 'notifiedPlayer',
-          userId,
-          notifiedAt: new Date().toISOString(),
-          ownerUsername: discData.ownerUsername,
-        };
-
-        console.log('Store inventory data with color:', storeInventoryData);
-
-        // Use setDoc instead of updateDoc to ensure all fields are set
-        await setDoc(storeInventoryRef, storeInventoryData);
-        console.log('Store inventory updated');
 
         // Update player inventory status
         console.log('\nUpdating player inventory status...');
@@ -314,10 +335,8 @@ const StoreAddDisc = () => {
         console.log('=== Notification Process Complete ===\n');
       }
     } catch (error) {
-      console.error('\n=== Error in Notification Process ===');
-      console.error('Error details:', error);
-      console.error('Error stack:', (error as Error).stack);
-      Alert.alert('Error', 'Failed to notify player.');
+      console.error('Error in handleNotifyPlayer:', error);
+      Alert.alert('Error', 'Failed to process disc.');
     }
   };
 

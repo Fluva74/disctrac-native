@@ -1,45 +1,62 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import ScreenTemplate from '../components/ScreenTemplate';
-import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
-import { PlayerStackParamList } from '../stacks/PlayerStack';
-import { PlayerProfile } from '../types/Profile';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StoreStackParamList } from '../stacks/StoreStack';
+import { StoreProfile } from '../types/Profile';
 import { InitialsAvatar } from '../components/InitialsAvatar';
 
-const Profile = () => {
-  const [profile, setProfile] = useState<PlayerProfile>({});
-  const [discCount, setDiscCount] = useState(0);
-  const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
-  const [username, setUsername] = useState<string>('Profile');
+type StoreNavigationProp = NativeStackNavigationProp<StoreStackParamList>;
 
-  const fetchProfileAndDiscs = async () => {
+const StoreDetails = () => {
+  const [profile, setProfile] = useState<StoreProfile>({
+    name: '',
+    contactPreferences: {
+      email: false,
+      phone: false,
+      inApp: true,
+    }
+  });
+  const [storeName, setStoreName] = useState<string>('Store');
+  const navigation = useNavigation<StoreNavigationProp>();
+
+  const fetchStoreProfile = async () => {
     const user = FIREBASE_AUTH.currentUser;
     if (user) {
-      // Fetch profile data
-      const docRef = doc(FIREBASE_DB, 'players', user.uid);
+      const docRef = doc(FIREBASE_DB, 'stores', user.uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        // Log the data to see what we're getting
-        console.log('Profile Data:', docSnap.data());
-        setProfile(docSnap.data() as PlayerProfile);
-        setUsername(docSnap.data().username || 'Profile');
+        console.log('Store Profile Data:', docSnap.data());
+        const data = docSnap.data();
+        setProfile({
+          name: data.name || '',
+          contactPreferences: {
+            email: data.contactPreferences?.email || false,
+            phone: data.contactPreferences?.phone || false,
+            inApp: data.contactPreferences?.inApp || true,
+          },
+          email: data.email || '',
+          phone: data.phone || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          zipCode: data.zipCode || '',
+          website: data.website || '',
+          hours: data.hours || '',
+          avatarUrl: data.avatarUrl || '',
+        });
+        setStoreName(data.name || 'Store');
       }
-
-      // Fetch disc count
-      const discsRef = collection(FIREBASE_DB, 'playerDiscs');
-      const q = query(discsRef, where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      setDiscCount(querySnapshot.size);
     }
   };
 
-  // Replace useEffect with useFocusEffect
   useFocusEffect(
     React.useCallback(() => {
-      fetchProfileAndDiscs();
+      fetchStoreProfile();
     }, [])
   );
 
@@ -72,15 +89,19 @@ const Profile = () => {
     return renderProfileItem('Contact Methods', methods.join(', '));
   };
 
-  const getFullName = () => {
-    if (!profile.firstName && !profile.lastName) return undefined;
-    return [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+  const getFullAddress = () => {
+    if (!profile.address && !profile.city && !profile.state && !profile.zipCode) return undefined;
+    return [
+      profile.address,
+      profile.city && profile.state ? `${profile.city}, ${profile.state}` : undefined,
+      profile.zipCode
+    ].filter(Boolean).join(' ');
   };
 
   return (
     <ScreenTemplate>
       <View style={styles.container}>
-        <Text style={styles.title}>{username}</Text>
+        <Text style={styles.title}>{storeName}</Text>
         
         <View style={styles.avatarContainer}>
           {profile.avatarUrl ? (
@@ -90,7 +111,7 @@ const Profile = () => {
             />
           ) : (
             <InitialsAvatar 
-              name={getFullName()}
+              name={storeName}
               size={120}
             />
           )}
@@ -101,19 +122,17 @@ const Profile = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {renderProfileItem('Name', getFullName())}
+          {renderProfileItem('Store Name', profile.name)}
           {renderProfileItem('Email', profile.email)}
           {renderProfileItem('Phone', profile.phone)}
-          {profile.city && profile.state && 
-            renderProfileItem('Location', `${profile.city}, ${profile.state}`)}
-          {renderProfileItem('Team', profile.teamName)}
-          {renderProfileItem('PDGA Number', profile.pdgaNumber)}
-          {renderProfileItem('Discs in Bag', discCount.toString())}
+          {renderProfileItem('Address', getFullAddress())}
+          {renderProfileItem('Website', profile.website)}
+          {renderProfileItem('Hours', profile.hours)}
           {renderContactMethods()}
 
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => navigation.navigate('EditProfile', { profile })}
+            onPress={() => navigation.navigate('EditStoreProfile', { profile })}
           >
             <LinearGradient
               colors={['#44FFA1', '#4D9FFF']}
@@ -121,7 +140,7 @@ const Profile = () => {
               end={{ x: 1, y: 0 }}
               style={styles.editButtonGradient}
             >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+              <Text style={styles.editButtonText}>Edit Store Details</Text>
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
@@ -181,7 +200,7 @@ const styles = StyleSheet.create({
   },
   editButton: {
     marginTop: 16,
-    marginBottom: 32, // Extra padding for bottom tabs
+    marginBottom: 32,
   },
   editButtonGradient: {
     padding: 16,
@@ -195,4 +214,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Profile; 
+export default StoreDetails; 

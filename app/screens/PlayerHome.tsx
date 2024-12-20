@@ -48,7 +48,7 @@ const PlayerHome = () => {
     return (
         <ScreenTemplate>
             <View style={styles.welcomeContainer}>
-                <Text style={styles.welcomeText}>Welcome, @{username}!</Text>
+                <Text style={styles.welcomeText}>Welcome, {username}!</Text>
                 <Text style={styles.subtitle}>Look Up Disc</Text>
             </View>
 

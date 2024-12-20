@@ -2,9 +2,9 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import StoreHome from '../screens/StoreHome';
-import StoreInventory from '../screens/StoreInventory';
+import NotifiedOwner from '../screens/NotifiedOwner';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
-import Resources from '../screens/Resources';
+import ReleasedToStore from '../screens/ReleasedToStore';
 import Messages from '../screens/Messages';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
@@ -62,17 +62,23 @@ export default function StoreBottomTabs() {
       />
       <Tab.Screen
         name="Inventory"
-        component={StoreInventory}
+        component={NotifiedOwner}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="disc" color={color} size={size} />
+          tabBarLabel: 'Notified Owner',
+          tabBarIcon: ({ focused }) => (
+            <MaterialCommunityIcons
+              name="disc"
+              size={24}
+              color={focused ? '#44FFA1' : '#71717A'}
+            />
           ),
         }}
       />
       <Tab.Screen
         name="Resources"
-        component={Resources}
+        component={ReleasedToStore}
         options={{
+          tabBarLabel: 'Released Discs',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="book-open-variant" color={color} size={size} />
           ),
