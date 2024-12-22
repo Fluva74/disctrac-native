@@ -7,7 +7,8 @@ import {
   ScrollView, 
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  SafeAreaView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
@@ -19,6 +20,9 @@ import { StoreProfile } from '../types/Profile';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
 import { Picker } from '@react-native-picker/picker';
+import { formatPhoneNumber } from '../utils/stringUtils';
+import { StoreHoursModal } from '../components/modals/StoreHoursModal';
+import { SuccessModal } from '../components/modals/SuccessModal';
 
 type EditStoreProfileRouteProp = RouteProp<StoreStackParamList, 'EditStoreProfile'>;
 type StoreNavigationProp = NativeStackNavigationProp<StoreStackParamList>;
@@ -35,15 +39,9 @@ const EditStoreProfile = () => {
   const navigation = useNavigation<StoreNavigationProp>();
   const route = useRoute<EditStoreProfileRouteProp>();
 
-  // Create a function to generate the initial state
   const createInitialProfile = (): StoreProfile => {
     const defaultProfile: StoreProfile = {
-      name: '',
-      contactPreferences: {
-        email: false,
-        phone: false,
-        inApp: true,
-      }
+      storeName: '',
     };
 
     if (!route.params?.profile) {
@@ -53,12 +51,7 @@ const EditStoreProfile = () => {
     const initialProfile = route.params.profile;
     return {
       // Required fields
-      name: initialProfile.name || defaultProfile.name,
-      contactPreferences: {
-        email: initialProfile.contactPreferences?.email || defaultProfile.contactPreferences.email,
-        phone: initialProfile.contactPreferences?.phone || defaultProfile.contactPreferences.phone,
-        inApp: initialProfile.contactPreferences?.inApp || defaultProfile.contactPreferences.inApp,
-      },
+      storeName: initialProfile.storeName || defaultProfile.storeName,
       // Optional fields
       email: initialProfile.email || '',
       phone: initialProfile.phone || '',
@@ -73,6 +66,8 @@ const EditStoreProfile = () => {
   };
 
   const [profile, setProfile] = useState<StoreProfile>(createInitialProfile());
+  const [showHoursModal, setShowHoursModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -85,11 +80,7 @@ const EditStoreProfile = () => {
         updatedAt: new Date().toISOString(),
       });
 
-      Alert.alert(
-        'Success',
-        'Store profile updated successfully',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error updating store profile:', error);
       Alert.alert('Error', 'Failed to update store profile');
@@ -98,180 +89,158 @@ const EditStoreProfile = () => {
 
   return (
     <ScreenTemplate>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+      <View style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
         >
-          <Text style={styles.title}>Edit Store Details</Text>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.title}>Edit Store Details</Text>
 
-          <Input
-            label="Store Name"
-            value={profile.name}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
-            placeholder="Enter store name"
-          />
+            <Input
+              label="Store Name"
+              value={profile.storeName}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, storeName: text }))}
+              placeholder="Enter store name"
+            />
 
-          <Input
-            label="Email"
-            value={profile.email}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, email: text }))}
-            placeholder="Enter email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            <Input
+              label="Email"
+              value={profile.email}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, email: text }))}
+              placeholder="Enter email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              containerStyle={{ marginTop: 16 }}
 
-          <Input
-            label="Phone"
-            value={profile.phone}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, phone: text }))}
-            placeholder="Enter phone number"
-            keyboardType="phone-pad"
-          />
+            />
 
-          <Input
-            label="Address"
-            value={profile.address}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, address: text }))}
-            placeholder="Enter street address"
-          />
+            <Input
+              label="Phone"
+              value={profile.phone}
+              onChangeText={(text) => {
+                // Only allow numeric input
+                const numericOnly = text.replace(/[^\d]/g, '');
+                // Format as user types
+                const formattedPhone = formatPhoneNumber(numericOnly);
+                setProfile(prev => ({ ...prev, phone: formattedPhone }));
+              }}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              maxLength={12} // Account for the two hyphens
+              containerStyle={{ marginTop: 16 }}
+            />
 
-          <Input
-            label="City"
-            value={profile.city}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, city: text }))}
-            placeholder="Enter city"
-          />
+            <Input
+              label="Address"
+              value={profile.address}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, address: text }))}
+              placeholder="Enter street address"
+              containerStyle={{ marginTop: 16 }}
+            />
 
-          <View style={styles.pickerContainer}>
-            <Text style={styles.label}>State</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={profile.state}
-                onValueChange={(value) => setProfile(prev => ({ ...prev, state: value }))}
-                style={styles.picker}
-                dropdownIconColor="#FFFFFF"
-              >
-                <Picker.Item label="Select state" value="" />
-                {states.map(state => (
-                  <Picker.Item key={state} label={state} value={state} />
-                ))}
-              </Picker>
+            <Input
+              label="City"
+              value={profile.city}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, city: text }))}
+              placeholder="Enter city"
+              containerStyle={{ marginTop: 16 }}
+            />
+
+            <View style={styles.pickerContainer}>
+              <Text style={styles.label}>State</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={profile.state}
+                  onValueChange={(value) => setProfile(prev => ({ ...prev, state: value }))}
+                  style={styles.picker}
+                  dropdownIconColor="#FFFFFF"
+                >
+                  <Picker.Item label="Select state" value="" />
+                  {states.map(state => (
+                    <Picker.Item key={state} label={state} value={state} />
+                  ))}
+                </Picker>
+              </View>
             </View>
-          </View>
 
-          <Input
-            label="ZIP Code"
-            value={profile.zipCode}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, zipCode: text }))}
-            placeholder="Enter ZIP code"
-            keyboardType="numeric"
-          />
+            <Input
+              label="ZIP Code"
+              value={profile.zipCode}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, zipCode: text }))}
+              placeholder="Enter ZIP code"
+              keyboardType="numeric"
+            //   containerStyle={{ marginTop: 16 }}
+            />
 
-          <Input
-            label="Website"
-            value={profile.website}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, website: text }))}
-            placeholder="Enter website URL"
-            keyboardType="url"
-            autoCapitalize="none"
-          />
+            <Input
+              label="Website"
+              value={profile.website}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, website: text }))}
+              placeholder="Enter website URL (optional)"
+              keyboardType="url"
+              autoCapitalize="none"
+              containerStyle={{ marginTop: 16 }}
+            />
 
-          <Input
-            label="Hours"
-            value={profile.hours}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, hours: text }))}
-            placeholder="Enter store hours"
-            multiline
-          />
 
-          <View style={styles.contactPreferences}>
-            <Text style={styles.label}>Contact Preferences</Text>
-            <View style={styles.checkboxContainer}>
-              <TouchableOpacity
-                style={styles.checkbox}
-                onPress={() => setProfile(prev => ({
-                  ...prev,
-                  contactPreferences: {
-                    ...prev.contactPreferences,
-                    email: !prev.contactPreferences.email
-                  }
-                }))}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Store Hours</Text>
+              <TouchableOpacity 
+                style={styles.hoursButton}
+                onPress={() => setShowHoursModal(true)}
               >
-                <LinearGradient
-                  colors={profile.contactPreferences.email ? ['#44FFA1', '#4D9FFF'] : ['transparent', 'transparent']}
-                  style={styles.checkboxInner}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.checkboxLabel}>Email</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.checkbox}
-                onPress={() => setProfile(prev => ({
-                  ...prev,
-                  contactPreferences: {
-                    ...prev.contactPreferences,
-                    phone: !prev.contactPreferences.phone
-                  }
-                }))}
-              >
-                <LinearGradient
-                  colors={profile.contactPreferences.phone ? ['#44FFA1', '#4D9FFF'] : ['transparent', 'transparent']}
-                  style={styles.checkboxInner}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.checkboxLabel}>Phone</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.checkbox}
-                onPress={() => setProfile(prev => ({
-                  ...prev,
-                  contactPreferences: {
-                    ...prev.contactPreferences,
-                    inApp: !prev.contactPreferences.inApp
-                  }
-                }))}
-              >
-                <LinearGradient
-                  colors={profile.contactPreferences.inApp ? ['#44FFA1', '#4D9FFF'] : ['transparent', 'transparent']}
-                  style={styles.checkboxInner}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.checkboxLabel}>In-App</Text>
-                </LinearGradient>
+                <Text style={styles.hoursButtonText}>
+                  {profile.hours ? 'Edit Store Hours' : 'Set Store Hours'}
+                </Text>
               </TouchableOpacity>
             </View>
+          </ScrollView>
+          <View style={styles.buttonWrapper}>
+            <SafeAreaView style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <LinearGradient
+                  colors={['#44FFA1', '#4D9FFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.saveButtonGradient}
+                >
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </SafeAreaView>
           </View>
-
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <LinearGradient
-              colors={['#44FFA1', '#4D9FFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.saveButtonGradient}
-            >
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
+      <StoreHoursModal
+        visible={showHoursModal}
+        onClose={() => setShowHoursModal(false)}
+        value={profile.hours}
+        onChange={(hours) => setProfile(prev => ({ ...prev, hours }))}
+      />
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigation.goBack();
+        }}
+        message="Store profile updated successfully"
+      />
     </ScreenTemplate>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#09090B',
+  },
+  keyboardView: {
     flex: 1,
   },
   scrollView: {
@@ -291,10 +260,11 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 14,
     color: '#A1A1AA',
-    marginBottom: 8,
+    marginTop: 16,
+    // marginBottom: 8,
   },
   pickerContainer: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   pickerWrapper: {
     backgroundColor: 'rgba(24, 24, 27, 0.5)',
@@ -302,35 +272,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#27272A',
     overflow: 'hidden',
+    marginTop: 8,
   },
   picker: {
     color: '#FFFFFF',
     height: 50,
-  },
-  contactPreferences: {
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  checkbox: {
-    borderWidth: 1,
-    borderColor: '#27272A',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  checkboxInner: {
-    padding: 12,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  checkboxLabel: {
-    fontFamily: 'LeagueSpartan_400Regular',
-    fontSize: 14,
-    color: '#FFFFFF',
   },
   saveButton: {
     marginTop: 8,
@@ -343,6 +289,35 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_700Bold',
     fontSize: 16,
     color: '#000000',
+    textAlign: 'center',
+  },
+  buttonWrapper: {
+    backgroundColor: '#09090B',
+    paddingBottom: 24,
+  },
+  buttonContainer: {
+    backgroundColor: '#09090B',
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(39, 39, 42, 0.5)',
+    marginBottom: Platform.OS === 'ios' ? 24 : 16,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  hoursButton: {
+    backgroundColor: 'rgba(68, 255, 161, 0.1)',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#44FFA1',
+    marginTop: 8,
+  },
+  hoursButtonText: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#44FFA1',
     textAlign: 'center',
   },
 });
