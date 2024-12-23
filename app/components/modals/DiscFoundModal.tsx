@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BaseModal from '../modals/BaseModal';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { FIREBASE_DB } from '../../FirebaseConfig';
-import { FIREBASE_AUTH } from '../../FirebaseConfig';
+import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 
 interface DiscFoundModalProps {
   visible: boolean;

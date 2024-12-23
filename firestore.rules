@@ -10,11 +10,46 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isNotificationRecipient() {
+      return isAuthenticated() && (
+        request.auth.uid == resource.data.userId || 
+        request.auth.uid == resource.data.scannerUserId
+      );
+    }
+
+    function isMessageParticipant(message) {
+      return request.auth.uid == message.senderId || request.auth.uid == message.receiverId;
+    }
+
+    function isParticipant(participants) {
+      return request.auth.uid in participants;
+    }
+
+    function isUsernameAvailable(username) {
+      return !exists(/databases/$(database)/documents/players/**[data.username == username]) &&
+             !exists(/databases/$(database)/documents/stores/**[data.username == username]);
+    }
+
     // Players collection
     match /players/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isOwner(userId);
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if isOwner(userId) || (
+        request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expoPushToken', 'pushEnabled', 'contactPreferences'])
+      );
+    }
+
+    // Stores collection
+    match /stores/{storeId} {
+      allow read: if true;
+      allow list: if true;
+      allow create: if request.auth != null && request.auth.uid == storeId;
+      allow update: if isOwner(storeId) || (
+        request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['expoPushToken', 'pushEnabled', 'contactPreferences'])
+      );
+      allow delete: if isOwner(storeId);
     }
 
     // Player discs collection
@@ -22,27 +57,40 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && 
-        get(/databases/$(database)/documents/playerDiscs/$(discId)).data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        get(/databases/$(database)/documents/playerDiscs/$(discId)).data.userId == request.auth.uid ||
+        exists(/databases/$(database)/documents/stores/$(request.auth.uid))
+      );
     }
 
     // Messages collection
     match /messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid in resource.data.participants
-      );
-      allow create: if isAuthenticated() && (
-        request.auth.uid in request.resource.data.participants
-      );
-      allow delete: if isAuthenticated() && (
-        request.auth.uid in resource.data.participants
-      );
+      allow read: if isAuthenticated() && 
+        isParticipant(resource.data.participants);
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      
+      allow update: if isAuthenticated() 
+        && isParticipant(resource.data.participants)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'deletedBy']);
+      
+      allow delete: if isAuthenticated() 
+        && isParticipant(resource.data.participants);
+      
+      allow list: if isAuthenticated();
     }
 
     // Store inventory
     match /storeInventory/{discId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
+      allow create: if isAuthenticated() && 
+        exists(/databases/$(database)/documents/stores/$(request.auth.uid));
+      allow update: if isAuthenticated() && 
+        (exists(/databases/$(database)/documents/stores/$(request.auth.uid)) ||
+        (request.resource.data.status == 'released' && 
+         resource.data.userId == request.auth.uid));
+      allow delete: if isAuthenticated() && 
         exists(/databases/$(database)/documents/stores/$(request.auth.uid));
     }
 
@@ -51,25 +99,27 @@ service cloud.firestore {
       allow read: if isAuthenticated();
     }
 
-    // Discs collection (for disc data/suggestions)
+    // Discs collection
     match /discs/{disc} {
       allow read: if isAuthenticated();
     }
 
     // Notifications collection
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid;
-      
-      allow create: if isAuthenticated() && 
-        request.resource.data.type == 'DISC_FOUND' && 
-        exists(/databases/$(database)/documents/players/$(request.resource.data.userId));
-        
-      allow update: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid;
-        
-      allow delete: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid;
+      allow read: if isNotificationRecipient();
+      allow write: if isAuthenticated();
+      allow update: if isNotificationRecipient();
+      allow delete: if isNotificationRecipient();
+    }
+
+    // User inventory collection
+    match /userInventory/{userId} {
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId) || (
+        isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['discs'])
+      );
+      allow create: if isAuthenticated();
     }
   }
 } 

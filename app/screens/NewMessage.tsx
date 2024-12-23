@@ -15,15 +15,17 @@ import { collection, query, getDocs, where } from 'firebase/firestore';
 import { useMessages } from '../contexts/MessageContext';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { PlayerStackParamList } from '../stacks/PlayerStack';
+import { StoreStackParamList } from '../stacks/StoreStack';
 
 interface User {
   id: string;
   username: string;
 }
 
+type StoreNavigationProp = NavigationProp<StoreStackParamList>;
+
 const NewMessage = () => {
-  const navigation = useNavigation<NavigationProp<PlayerStackParamList>>();
+  const navigation = useNavigation<StoreNavigationProp>();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,29 +108,13 @@ const NewMessage = () => {
       // Create conversation ID by sorting UIDs to ensure consistency
       const conversationId = [currentUser.uid, receiverId].sort().join('_');
       
-      // Reset navigation stack to Messages, then navigate to MessageDetail
-      navigation.reset({
-        index: 1,
-        routes: [
-          { 
-            name: 'BottomTabs',
-            state: {
-              routes: [
-                { name: 'Messages', params: { screen: 'MessagesScreen' } }
-              ]
-            }
-          },
-          {
-            name: 'MessageDetail',
-            params: {
-              messageId: conversationId,
-              receiverInfo: {
-                id: receiverId,
-                name: selectedUser?.username || 'Unknown User'
-              }
-            }
-          }
-        ]
+      // Navigate back to Messages and then to MessageDetail
+      navigation.navigate('MessageDetail', {
+        messageId: conversationId,
+        receiverInfo: {
+          id: receiverId,
+          name: selectedUser?.username || 'Unknown User'
+        }
       });
     } catch (error) {
       console.error('Error sending message:', error);

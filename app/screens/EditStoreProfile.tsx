@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useNavigation, RouteProp, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StoreStackParamList } from '../stacks/StoreStack';
@@ -23,6 +23,8 @@ import { Picker } from '@react-native-picker/picker';
 import { formatPhoneNumber } from '../utils/stringUtils';
 import { StoreHoursModal } from '../components/modals/StoreHoursModal';
 import { SuccessModal } from '../components/modals/SuccessModal';
+import { ValidationModal } from '../components/modals/ValidationModal';
+import { NotificationToggle } from '../components/NotificationToggle';
 
 type EditStoreProfileRouteProp = RouteProp<StoreStackParamList, 'EditStoreProfile'>;
 type StoreNavigationProp = NativeStackNavigationProp<StoreStackParamList>;
@@ -38,17 +40,37 @@ const states = [
 const EditStoreProfile = () => {
   const navigation = useNavigation<StoreNavigationProp>();
   const route = useRoute<EditStoreProfileRouteProp>();
+  const { profile: initialProfile } = route.params;
+  const user = FIREBASE_AUTH.currentUser;
+
+  const fetchStoreProfile = async () => {
+    try {
+      if (!user) return;
+      const docRef = doc(FIREBASE_DB, 'stores', user.uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const updatedProfile = docSnap.data() as StoreProfile;
+        setProfile(updatedProfile);
+      }
+    } catch (error) {
+      console.error('Error fetching store profile:', error);
+    }
+  };
 
   const createInitialProfile = (): StoreProfile => {
     const defaultProfile: StoreProfile = {
       storeName: '',
+      contactPreferences: {
+        inApp: false,
+        email: false,
+        phone: false
+      }
     };
 
-    if (!route.params?.profile) {
+    if (!initialProfile) {
       return defaultProfile;
     }
 
-    const initialProfile = route.params.profile;
     return {
       // Required fields
       storeName: initialProfile.storeName || defaultProfile.storeName,
@@ -62,12 +84,27 @@ const EditStoreProfile = () => {
       website: initialProfile.website || '',
       hours: initialProfile.hours || '',
       avatarUrl: initialProfile.avatarUrl || '',
+      holdTime: initialProfile.holdTime || 3,
+      contactPreferences: initialProfile.contactPreferences ?? {
+        inApp: false,
+        email: false,
+        phone: false
+      }
     };
   };
 
   const [profile, setProfile] = useState<StoreProfile>(createInitialProfile());
   const [showHoursModal, setShowHoursModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [validationModal, setValidationModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   const handleSave = async () => {
     try {
@@ -85,6 +122,37 @@ const EditStoreProfile = () => {
       console.error('Error updating store profile:', error);
       Alert.alert('Error', 'Failed to update store profile');
     }
+  };
+
+  const handleHoldTimeChange = (text: string) => {
+    const numericOnly = text.replace(/[^\d]/g, '');
+    
+    if (numericOnly === '') {
+      setProfile(prev => ({ ...prev, holdTime: undefined }));
+      return;
+    }
+
+    const value = parseInt(numericOnly);
+
+    if (value < 1) {
+      setValidationModal({
+        visible: true,
+        title: 'Invalid Hold Time',
+        message: 'Hold time must be at least 1 day.',
+      });
+      return;
+    }
+    
+    if (value > 365) {
+      setValidationModal({
+        visible: true,
+        title: 'Invalid Hold Time',
+        message: 'Hold time cannot exceed 365 days.',
+      });
+      return;
+    }
+
+    setProfile(prev => ({ ...prev, holdTime: value }));
   };
 
   return (
@@ -188,6 +256,16 @@ const EditStoreProfile = () => {
               containerStyle={{ marginTop: 16 }}
             />
 
+            <Input
+              label="Hold Time Policy (Days)"
+              value={profile.holdTime?.toString() || ''} 
+              onChangeText={handleHoldTimeChange}
+              placeholder="Enter number of days (1-365)"
+              keyboardType="numeric"
+              maxLength={3}
+              containerStyle={{ marginTop: 16 }}
+              labelStyle={{ color: '#FF6B4A' }}
+            />
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Store Hours</Text>
@@ -200,6 +278,13 @@ const EditStoreProfile = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <NotificationToggle
+              userId={user?.uid ?? ''}
+              collectionName="stores"
+              contactPreferences={profile.contactPreferences ?? {}}
+              onUpdate={fetchStoreProfile}
+            />
           </ScrollView>
           <View style={styles.buttonWrapper}>
             <SafeAreaView style={styles.buttonContainer}>
@@ -230,6 +315,12 @@ const EditStoreProfile = () => {
           navigation.goBack();
         }}
         message="Store profile updated successfully"
+      />
+      <ValidationModal
+        visible={validationModal.visible}
+        onClose={() => setValidationModal(prev => ({ ...prev, visible: false }))}
+        title={validationModal.title}
+        message={validationModal.message}
       />
     </ScreenTemplate>
   );

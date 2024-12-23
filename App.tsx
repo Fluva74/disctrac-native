@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, StatusBar, Platform } from 'react-native';
+import { ActivityIndicator, View, StatusBar, Platform, NativeModules } from 'react-native';
 import { AuthProvider, useAuth } from './app/contexts/AuthContext';
 import { MessageProvider } from './app/contexts/MessageContext';
 import { NotificationProvider, useNotifications } from './app/contexts/NotificationContext';
@@ -18,36 +18,36 @@ import StoreStackNavigator from './app/stacks/StoreStack';
 import NotificationModal from './app/components/modals/NotificationModal';
 import { FIREBASE_DB } from './FirebaseConfig';
 import { getDoc, doc } from 'firebase/firestore';
+import SignUp from './app/screens/SignUp';
+import ForgotPassword from './app/screens/ForgotPassword';
 
 // If you're using Expo
 // import * as NavigationBar from 'expo-navigation-bar';
 
 export type RootStackParamList = {
+  Home: undefined;
   Login: undefined;
+  SignUp: undefined;
   AccountSelection: undefined;
   PlayerCreate: undefined;
   StoreCreate: undefined;
-  Inside: {
-    screen: string;
-    params?: {
-      screen: string;
-      params?: {
-        screen: string;
-      };
-    };
-  };
   ForgotPassword: undefined;
-  PlayerStack: undefined | { screen?: string; params?: any };
+  PlayerStack: {
+    screen?: string;
+    params?: any;
+  } | undefined;
   StoreStack: {
-    screen: 'StoreBottomTabs';
-    params: {
-      screen: string;
+    screen?: string;
+    params?: {
+      screen?: string;
+      params?: any;
     };
-  };
+  } | undefined;
   StoreBottomTabs: {
     screen?: string;
     params?: any;
   };
+  // ... add other routes as needed
 };
 
 export type InsideStackParamList = {
@@ -173,12 +173,21 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="AccountSelection" component={AccountSelection} />
-          <Stack.Screen name="PlayerCreate" component={PlayerCreate} />
+          <Stack.Screen 
+            name="PlayerCreate" 
+            component={PlayerCreate}
+            options={{ 
+              headerShown: false,
+              presentation: 'fullScreenModal'  // This makes it full screen
+            }}
+          />
           <Stack.Screen name="StoreCreate" component={StoreCreate} />
+          <Stack.Screen name="SignUp" component={SignUp} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
         </>
       ) : (
         // App screens
-        <>
+        <> 
           <Stack.Screen name="PlayerStack" component={PlayerStackNavigator} />
           <Stack.Screen name="StoreStack" component={StoreStackNavigator} />
         </>
@@ -197,6 +206,12 @@ export default function App() {
     if (Platform.OS === 'android') {
       // Hide system navigation bar
       StatusBar.setHidden(true, 'slide');
+      // Enable immersive mode on Android
+      try {
+        NativeModules.SystemBarsModule?.enableImmersiveMode();
+      } catch (error) {
+        console.warn('Failed to enable immersive mode:', error);
+      }
     }
   }, []);
 

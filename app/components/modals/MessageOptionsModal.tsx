@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
-    color: '#A1A1AA',
+    color: '#44FFA1',
     marginBottom: 24,
   },
   deleteButton: {

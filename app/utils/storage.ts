@@ -1,11 +1,16 @@
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FIREBASE_APP } from '../../FirebaseConfig';
 import * as ImageManipulator from 'expo-image-manipulator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const storage = getStorage(FIREBASE_APP);
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
+
+const STORAGE_KEYS = {
+  PUSH_NOTIFICATION_ASKED: 'pushNotificationAsked',
+};
 
 export async function uploadProfileImage(uri: string, userId: string): Promise<string> {
   let attempts = 0;
@@ -80,4 +85,22 @@ export async function uploadProfileImage(uri: string, userId: string): Promise<s
   }
 
   throw new Error('Upload failed');
-} 
+}
+
+export const setPushNotificationAsked = async () => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.PUSH_NOTIFICATION_ASKED, 'true');
+  } catch (error) {
+    console.error('Error saving push notification asked status:', error);
+  }
+};
+
+export const hasPushNotificationBeenAsked = async () => {
+  try {
+    const value = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_NOTIFICATION_ASKED);
+    return value === 'true';
+  } catch (error) {
+    console.error('Error getting push notification asked status:', error);
+    return false;
+  }
+}; 

@@ -5,7 +5,7 @@ import StoreHome from '../screens/StoreHome';
 import NotifiedOwner from '../screens/NotifiedOwner';
 import DiscGolfVideos from '../screens/DiscGolfVideos';
 import ReleasedToStore from '../screens/ReleasedToStore';
-import Messages from '../screens/Messages';
+import StoreMessages from '../screens/StoreMessages';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
 
@@ -86,7 +86,7 @@ export default function StoreBottomTabs() {
       />
       <Tab.Screen
         name="Messages"
-        component={Messages}
+        component={StoreMessages}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="message" color={color} size={size} />

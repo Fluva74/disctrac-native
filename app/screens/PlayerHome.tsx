@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, Alert, StyleSheet, Dimensions } from 'rea
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { InsideStackParamList } from '../../App';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import ScreenTemplate from '../components/ScreenTemplate';
+import * as Notifications from 'expo-notifications';
+import { notificationService } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 const QR_SIZE = width * 0.7; // 70% of screen width
@@ -19,6 +21,67 @@ const PlayerHome = () => {
         LeagueSpartan_400Regular,
         LeagueSpartan_700Bold,
     });
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        checkFirstTimeUser();
+    }, []);
+
+    const checkFirstTimeUser = async () => {
+        try {
+            const currentUser = FIREBASE_AUTH.currentUser;
+            if (!currentUser) return;
+
+            const userRef = doc(FIREBASE_DB, 'players', currentUser.uid);
+            const userDoc = await getDoc(userRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                // Check if pushEnabled field exists
+                if (!('pushEnabled' in userData)) {
+                    // First time user - show notification prompt
+                    Alert.alert(
+                        "Enable Notifications",
+                        "Allow notifications to receive updates when:\n\n" +
+                        "• Someone finds your disc\n" +
+                        "• You receive a message\n" +
+                        "• Your disc is ready for pickup",
+                        [
+                            {
+                                text: "Not Now",
+                                style: "cancel",
+                                onPress: async () => {
+                                    await updateDoc(userRef, {
+                                        pushEnabled: false
+                                    });
+                                }
+                            },
+                            {
+                                text: "Enable",
+                                onPress: async () => {
+                                    const { status } = await Notifications.requestPermissionsAsync();
+                                    if (status === Notifications.PermissionStatus.GRANTED) {
+                                        await notificationService.registerForPushNotifications();
+                                        await updateDoc(userRef, {
+                                            pushEnabled: true
+                                        });
+                                    } else {
+                                        await updateDoc(userRef, {
+                                            pushEnabled: false
+                                        });
+                                    }
+                                }
+                            }
+                        ]
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error checking first time user:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchUserData = async () => {

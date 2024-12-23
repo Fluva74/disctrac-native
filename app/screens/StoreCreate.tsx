@@ -14,14 +14,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { doc, setDoc, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs, getDoc, limit } from 'firebase/firestore';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { formatPhoneNumber } from '../utils/stringUtils';
 
 const states = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -37,6 +38,8 @@ const StoreCreate = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [storeName, setStoreName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [website, setWebsite] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
     const [state, setState] = useState('');
@@ -47,17 +50,28 @@ const StoreCreate = () => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
     const checkUsernameAvailability = async (username: string) => {
-        // Check stores collection
-        const storesRef = collection(FIREBASE_DB, 'stores');
-        const storesQuery = query(storesRef, where('username', '==', username.toLowerCase()));
-        const storesSnapshot = await getDocs(storesQuery);
+        try {
+            // Check players collection
+            const playerQuery = query(
+                collection(FIREBASE_DB, 'players'),
+                where('username', '==', username.toLowerCase()),
+                limit(1)
+            );
+            const playerSnapshot = await getDocs(playerQuery);
 
-        // Check players collection
-        const playersRef = collection(FIREBASE_DB, 'players');
-        const playersQuery = query(playersRef, where('username', '==', username.toLowerCase()));
-        const playersSnapshot = await getDocs(playersQuery);
+            // Check stores collection
+            const storeQuery = query(
+                collection(FIREBASE_DB, 'stores'),
+                where('username', '==', username.toLowerCase()),
+                limit(1)
+            );
+            const storeSnapshot = await getDocs(storeQuery);
 
-        return storesSnapshot.empty && playersSnapshot.empty;
+            return playerSnapshot.empty && storeSnapshot.empty;
+        } catch (error) {
+            console.error('Error checking username availability:', error);
+            throw error;
+        }
     };
 
     const handleSubmit = async () => {
@@ -67,6 +81,7 @@ const StoreCreate = () => {
                 storeName,
                 username,
                 email,
+                phone,
                 city,
                 state
             });
@@ -77,8 +92,8 @@ const StoreCreate = () => {
                 return;
             }
 
-            if (!storeName || !address || !city || !state || !holdTime) {
-                Alert.alert('Error', 'Please fill all store details');
+            if (!storeName || !address || !city || !state || !holdTime || !phone) {
+                Alert.alert('Error', 'Please fill all required store details');
                 return;
             }
 
@@ -107,6 +122,8 @@ const StoreCreate = () => {
                 username: username.toLowerCase(),
                 email,
                 storeName,
+                phone,
+                website,
                 address,
                 city,
                 state,
@@ -130,42 +147,25 @@ const StoreCreate = () => {
 
             // Verify creation
             const verifyDoc = await getDoc(storeRef);
-            console.log('Store document created:', {
-                exists: verifyDoc.exists(),
-                data: verifyDoc.data()
-            });
+            if (!verifyDoc.exists()) {
+                throw new Error('Failed to create store document');
+            }
 
-            console.log('Navigating to StoreStack');
-
-            // After successful store creation
-            console.log('=== Store Creation ===');
-            console.log('Created store with ID:', userCredential.user.uid);
-            console.log('Navigating to:', 'StoreStack');
+            // Wait a moment for the document to be fully created
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Force reload auth to update claims
+            await FIREBASE_AUTH.currentUser?.reload();
+            
+            // Navigate to store stack
             navigation.reset({
                 index: 0,
-                routes: [{ 
-                    name: 'StoreStack'
-                }]
+                routes: [{ name: 'StoreStack' }],
             });
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Registration Error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            console.error('Full error object:', JSON.stringify(error, null, 2));
-
-            if (error.code === 'auth/email-already-in-use') {
-                Alert.alert('Error', 'This email is already registered.');
-            } else if (error.code === 'auth/invalid-email') {
-                Alert.alert('Error', 'Invalid email address.');
-            } else if (error.code === 'auth/weak-password') {
-                Alert.alert('Error', 'Password should be at least 6 characters.');
-            } else {
-                Alert.alert(
-                    'Error', 
-                    `Failed to create account: ${error.message || 'Unknown error'}`
-                );
-            }
+            Alert.alert('Error', 'Failed to create store account. Please try again.');
         }
     };
 
@@ -259,6 +259,25 @@ const StoreCreate = () => {
                         </View>
 
                         <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Phone*</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter phone number"
+                                placeholderTextColor="#A1A1AA"
+                                value={phone}
+                                onChangeText={(text) => {
+                                    // Only allow numeric input
+                                    const numericOnly = text.replace(/[^\d]/g, '');
+                                    // Format as user types
+                                    const formattedPhone = formatPhoneNumber(numericOnly);
+                                    setPhone(formattedPhone);
+                                }}
+                                keyboardType="phone-pad"
+                                maxLength={12} // Account for the two hyphens
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
                             <Text style={styles.label}>Store Address*</Text>
                             <TextInput
                                 style={styles.input}
@@ -293,6 +312,19 @@ const StoreCreate = () => {
                                     {state || "Select your state"}
                                 </Text>
                             </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Website</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter website URL (optional)"
+                                placeholderTextColor="#A1A1AA"
+                                value={website}
+                                onChangeText={setWebsite}
+                                keyboardType="url"
+                                autoCapitalize="none"
+                            />
                         </View>
 
                         <View style={styles.inputContainer}>

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import { PlayerStackParamList } from '../stacks/PlayerStack';
 import { useMessages } from '../contexts/MessageContext';
 import { FIREBASE_AUTH } from '../../FirebaseConfig';
@@ -23,8 +23,16 @@ import ScreenTemplate from '../components/ScreenTemplate';
 import { doc, getDoc } from 'firebase/firestore';
 import { FIREBASE_DB } from '../../FirebaseConfig';
 import { capitalizeFirstLetter } from '../utils/stringUtils';
+import { StoreStackParamList } from '../stacks/StoreStack';
 
-type MessageDetailRouteProp = RouteProp<PlayerStackParamList, 'MessageDetail'>;
+// Define a union type for both navigation stacks
+type CombinedStackParamList = PlayerStackParamList & StoreStackParamList;
+
+// Define the navigation prop type
+type MessageDetailNavigationProp = NavigationProp<CombinedStackParamList>;
+
+// Update the route prop type
+type MessageDetailRouteProp = RouteProp<CombinedStackParamList, 'MessageDetail'>;
 
 interface ReceiverInfo {
   id: string;
@@ -35,33 +43,126 @@ interface ReceiverInfo {
 
 const MessageDetail = () => {
   const route = useRoute<MessageDetailRouteProp>();
-  const navigation = useNavigation();
-  const { messageId, receiverInfo } = route.params;
+  const navigation = useNavigation<MessageDetailNavigationProp>();
+  const { messageId = '', receiverInfo = { id: '', name: '' } } = route.params;
   const { messages, sendMessage, deleteMessage, deleteConversation, markAsRead } = useMessages();
   const [replyText, setReplyText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const currentUser = FIREBASE_AUTH.currentUser;
 
-  const otherUserId = React.useMemo(() => {
-    if (!currentUser) return null;
-    const [user1, user2] = messageId.split('_');
-    return user1 === currentUser.uid ? user2 : user1;
-  }, [messageId, currentUser]);
+  console.log('=== MessageDetail Render ===');
+  console.log('Current user:', FIREBASE_AUTH.currentUser?.uid);
+  console.log('Route params:', route.params);
+  console.log('Receiver info:', receiverInfo);
+
+  useEffect(() => {
+    console.log('=== Initial Setup Effect ===');
+    if (!currentUser || !messageId) {
+      console.log('Missing currentUser or messageId');
+      return;
+    }
+
+    // Parse messageId to get the other user's ID
+    const participantIds = messageId.split('_');
+    console.log('Participant IDs:', participantIds);
+    
+    const otherUserId = participantIds.find(id => id !== currentUser.uid);
+    console.log('Derived other user ID:', otherUserId);
+
+    if (!otherUserId) {
+      console.log('Could not determine other user ID');
+      return;
+    }
+
+    // Update receiver info with the correct ID
+    const updatedReceiverInfo = {
+      ...receiverInfo,
+      id: otherUserId
+    };
+    console.log('Updated receiver info:', updatedReceiverInfo);
+
+    // Update route params
+    navigation.setParams({
+      messageId,
+      receiverInfo: {
+        id: otherUserId,
+        name: receiverInfo.name || '',
+        ...(receiverInfo.discName && { discName: receiverInfo.discName }),
+        ...(receiverInfo.initialMessage && { initialMessage: receiverInfo.initialMessage })
+      }
+    });
+
+    // Fetch user details
+    const fetchUserDetails = async () => {
+      try {
+        console.log('Fetching user details for:', otherUserId);
+        const playerDoc = await getDoc(doc(FIREBASE_DB, 'players', otherUserId));
+        const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', otherUserId));
+
+        console.log('Player doc exists:', playerDoc.exists());
+        console.log('Store doc exists:', storeDoc.exists());
+
+        let userData;
+        if (playerDoc.exists()) {
+          userData = playerDoc.data();
+          console.log('Found player data:', userData);
+        } else if (storeDoc.exists()) {
+          userData = storeDoc.data();
+          console.log('Found store data:', userData);
+        }
+
+        if (userData) {
+          const name = userData.username || userData.storeName || 'Unknown User';
+          navigation.setParams({
+            messageId,
+            receiverInfo: {
+              id: updatedReceiverInfo.id,
+              name,
+              ...(updatedReceiverInfo.discName && { discName: updatedReceiverInfo.discName }),
+              ...(updatedReceiverInfo.initialMessage && { initialMessage: updatedReceiverInfo.initialMessage })
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+      }
+    };
+
+    fetchUserDetails();
+  }, [currentUser, messageId]);
 
   const conversationMessages = React.useMemo(() => {
-    if (!currentUser || !otherUserId) return [];
-    return messages
-      .filter(msg => 
-        (msg.senderId === currentUser.uid && msg.receiverId === otherUserId) ||
-        (msg.senderId === otherUserId && msg.receiverId === currentUser.uid)
-      )
-      .sort((a, b) => {
-        const timeA = a.timestamp?.toDate?.()?.getTime() || 0;
-        const timeB = b.timestamp?.toDate?.()?.getTime() || 0;
-        return timeB - timeA;
+    if (!currentUser || !receiverInfo?.id) return [];
+    
+    console.log('=== Messages Effect ===');
+    console.log('Messages length:', messages.length);
+    console.log('Current user:', currentUser?.uid);
+    console.log('Receiver ID:', receiverInfo?.id);
+    
+    if (!currentUser || !receiverInfo?.id) {
+      console.log('Missing user or receiver info');
+      return [];
+    }
+    
+    const filtered = messages.filter(msg => {
+      const isInConversation = 
+        (msg.senderId === currentUser.uid && msg.receiverId === receiverInfo.id) ||
+        (msg.senderId === receiverInfo.id && msg.receiverId === currentUser.uid);
+      
+      console.log('Message:', {
+        id: msg.id,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        isInConversation
       });
-  }, [messages, currentUser, otherUserId]);
+      
+      return isInConversation;
+    });
+
+    console.log('Filtered messages:', filtered.length);
+    return filtered;
+  }, [messages, currentUser, receiverInfo?.id]);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -80,12 +181,14 @@ const MessageDetail = () => {
   }, []);
 
   const handleSend = async () => {
-    if (!replyText.trim() || !otherUserId) return;
+    if (!replyText.trim() || !receiverInfo?.id) return;
     try {
-      await sendMessage(otherUserId, replyText);
+      await sendMessage(receiverInfo.id, replyText.trim());
       setReplyText('');
+      Keyboard.dismiss();
     } catch (error) {
       console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -135,6 +238,9 @@ const MessageDetail = () => {
           end={{ x: 1, y: 0 }}
           style={styles.messageGradient}
         >
+          <Text style={styles.senderName}>
+            {item.senderId === currentUser?.uid ? 'Me' : item.senderName}
+          </Text>
           <Text style={styles.messageText}>{item.message}</Text>
           <Text style={styles.timestamp}>
             {item.timestamp?.toDate ? 
@@ -154,13 +260,26 @@ const MessageDetail = () => {
 
   // Add useEffect to fetch other user's name
   useEffect(() => {
+    console.log('=== MessageDetail Mount Effect ===');
+    console.log('Current user:', currentUser?.uid);
+    console.log('Message ID:', messageId);
+    console.log('Receiver info:', receiverInfo);
+    console.log('Available messages:', messages.length);
+
     const fetchOtherUserName = async () => {
-      if (!currentUser || !otherUserId) return;
+      if (!currentUser || !receiverInfo?.id) {
+        console.log('Missing user or receiver info');
+        return;
+      }
       
       try {
-        const userDoc = await getDoc(doc(FIREBASE_DB, 'players', otherUserId));
+        console.log('Fetching user name for:', receiverInfo.id);
+        const userDoc = await getDoc(doc(FIREBASE_DB, 'players', receiverInfo.id));
+        console.log('User doc exists:', userDoc.exists());
+        
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          console.log('User data:', userData);
           setOtherUserName(userData.username || 'Unknown User');
         }
       } catch (error) {
@@ -170,32 +289,32 @@ const MessageDetail = () => {
     };
 
     fetchOtherUserName();
-  }, [currentUser, otherUserId]);
+  }, [currentUser, receiverInfo?.id]);
 
   // Add this useEffect to mark messages as read when viewing them
   useEffect(() => {
-    if (!currentUser || !otherUserId) return;
+    if (!currentUser || !receiverInfo?.id) return;
 
     // Mark unread messages in this conversation as read
     const unreadMessages = messages.filter(msg => 
       !msg.read && 
       msg.receiverId === currentUser.uid &&
-      msg.senderId === otherUserId
+      msg.senderId === receiverInfo.id
     );
 
     unreadMessages.forEach(msg => {
       markAsRead(msg.id);
     });
-  }, [messages, currentUser, otherUserId]);
+  }, [messages, currentUser, receiverInfo?.id]);
 
   // When component mounts, if we have disc info, auto-send the first message
   useEffect(() => {
     const sendInitialMessage = async () => {
-      if (!messages.length && receiverInfo?.discName && otherUserId && currentUser) {
-        const discName = capitalizeFirstLetter(receiverInfo.discName);
+      if (!messages.length && receiverInfo?.discName && receiverInfo.id && currentUser) {
+        const discName = receiverInfo.discName ? capitalizeFirstLetter(receiverInfo.discName) : '';
         const initialMessage = `Hello! I found your ${discName} disc!`;
         try {
-          await sendMessage(otherUserId, initialMessage);
+          await sendMessage(receiverInfo.id, initialMessage);
           console.log('Initial message sent successfully');
         } catch (error) {
           console.error('Error sending initial message:', error);
@@ -204,11 +323,11 @@ const MessageDetail = () => {
     };
 
     sendInitialMessage();
-  }, [messages, receiverInfo, otherUserId, currentUser, sendMessage]); // Include all dependencies
+  }, [messages, receiverInfo, receiverInfo.id, currentUser, sendMessage]); // Include all dependencies
 
   return (
     <ScreenTemplate>
-      {/* Add Header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -217,7 +336,7 @@ const MessageDetail = () => {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerName}>{receiverInfo?.name || 'Chat'}</Text>
+          <Text style={styles.headerName}>{receiverInfo.name}</Text>
         </View>
         <TouchableOpacity 
           style={styles.menuButton}
@@ -251,10 +370,11 @@ const MessageDetail = () => {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      {/* Wrap content in KeyboardAvoidingView */}
+      <KeyboardAvoidingView
+        style={styles.contentContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -268,7 +388,10 @@ const MessageDetail = () => {
           inverted
         />
 
-        <View style={styles.inputContainer}>
+        <View style={[
+          styles.inputContainer,
+          keyboardHeight > 0 && { paddingBottom: 105 }
+        ]}>
           <TextInput
             style={styles.input}
             value={replyText}
@@ -277,10 +400,10 @@ const MessageDetail = () => {
             placeholderTextColor="#A1A1AA"
             multiline
           />
-          <TouchableOpacity
+          <TouchableOpacity 
+            style={styles.sendButton}
             onPress={handleSend}
             disabled={!replyText.trim()}
-            style={styles.sendButton}
           >
             <LinearGradient
               colors={['#44FFA1', '#4D9FFF']}
@@ -298,16 +421,37 @@ const MessageDetail = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(68, 255, 161, 0.2)',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerContent: {
     flex: 1,
-    backgroundColor: '#09090B',
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerName: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  menuButton: {
+    padding: 8,
   },
   messagesList: {
+    flexGrow: 1,
     padding: 16,
   },
   messageContainer: {
     marginVertical: 4,
-    width: '70%',
+    maxWidth: '80%',
   },
   sentMessage: {
     alignSelf: 'flex-end',
@@ -331,10 +475,17 @@ const styles = StyleSheet.create({
     color: '#A1A1AA',
     alignSelf: 'flex-end',
   },
+  senderName: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
-    paddingTop: 12,
+    paddingBottom: 68,
     borderTopWidth: 1,
     borderTopColor: 'rgba(68, 255, 161, 0.2)',
     backgroundColor: '#09090B',
@@ -349,11 +500,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
-    maxHeight: 100,
     minHeight: 40,
   },
   sendButton: {
-    alignSelf: 'flex-end',
     width: 40,
     height: 40,
   },
@@ -364,30 +513,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(68, 255, 161, 0.2)',
-    backgroundColor: '#09090B',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerContent: {
+  contentContainer: {
     flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
-  headerName: {
-    fontFamily: 'LeagueSpartan_700Bold',
-    fontSize: 18,
-    color: '#FFFFFF',
-  },
-  menuButton: {
-    padding: 8,
+    backgroundColor: '#09090B',
   },
 });
 

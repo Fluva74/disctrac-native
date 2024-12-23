@@ -66,12 +66,19 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) {
+      console.log('=== Messages Provider: No User ===');
       setMessages([]);
       setUnreadCount(0);
       return;
     }
 
     try {
+      console.log('=== Messages Provider: Setting Up Listener ===');
+      console.log('Current user:', user.uid);
+
+      // Register for push notifications once
+      notificationService.registerForPushNotifications();
+
       const messagesRef = collection(FIREBASE_DB, 'messages');
       const messageQuery = query(
         messagesRef,
@@ -79,14 +86,29 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         orderBy('timestamp', 'desc')
       );
 
+      console.log('Query params:', {
+        participants: user.uid,
+        orderBy: 'timestamp'
+      });
+
       const unsubscribe = onSnapshot(
         messageQuery, 
         (snapshot) => {
+          console.log('=== Messages Snapshot Update ===');
+          console.log('Number of docs:', snapshot.docs.length);
+          
           const messageList: Message[] = [];
           let unread = 0;
           
           snapshot.forEach((doc) => {
             const message = { id: doc.id, ...doc.data() } as Message;
+            console.log('Processing message:', {
+              id: message.id,
+              senderId: message.senderId,
+              receiverId: message.receiverId,
+              isDeleted: message.deletedBy?.includes(user.uid)
+            });
+
             if (!message.deletedBy?.includes(user.uid)) {
               messageList.push(message);
               if (!message.read && message.receiverId === user.uid) {
@@ -95,101 +117,120 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
             }
           });
           
+          console.log('Updated message count:', messageList.length);
+          console.log('Updated unread count:', unread);
+          
           setMessages(messageList);
           setUnreadCount(unread);
         },
         (error) => {
-          console.error('Messages subscription error:', error);
+          console.error('=== Messages Snapshot Error ===', error);
         }
       );
 
-      return () => unsubscribe();
+      return () => {
+        console.log('=== Cleaning up messages listener ===');
+        unsubscribe();
+      };
     } catch (error) {
-      console.error('Messages setup error:', error);
+      console.error('=== Messages setup error ===', error);
     }
   }, [user]);
 
-  useEffect(() => {
-    const currentUser = FIREBASE_AUTH.currentUser;
-    if (!currentUser) return;
-
-    // Register for push notifications
-    notificationService.registerForPushNotifications();
-
-    const messagesRef = collection(FIREBASE_DB, 'messages');
-    const q = query(
-      messagesRef,
-      where('receiverId', '==', currentUser.uid),
-      orderBy('timestamp', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const message = change.doc.data() as Message;
-          // Show notification for new messages when app is in background
-          if (message.senderId !== currentUser.uid && !message.read) {
-            notificationService.scheduleLocalNotification(
-              'New Message',
-              `${message.senderName || 'Someone'} sent you a message`
-            );
-          }
-        }
-      });
-      
-      // Update messages state
-      const newMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-      setMessages(newMessages);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   // Rest of the functions remain the same but use user.uid instead of currentUserId
   const sendMessage = async (receiverId: string, message: string, discId?: string) => {
-    if (!user) return;
-    
     try {
-      // Validate inputs
-      if (!receiverId.trim() || !message.trim()) {
-        throw new Error('Invalid message parameters');
+      console.log('=== Send Message Started ===');
+      console.log('Sender:', FIREBASE_AUTH.currentUser?.uid);
+      console.log('Receiver:', receiverId);
+      console.log('Message:', message);
+      console.log('DiscId:', discId);
+
+      const sender = FIREBASE_AUTH.currentUser;
+      if (!sender) {
+        console.error('No authenticated user found');
+        throw new Error('No authenticated user');
       }
 
-      const userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
-      if (!userDoc.exists()) {
+      // Check profiles
+      console.log('Checking sender profiles...');
+      const playerDoc = await getDoc(doc(FIREBASE_DB, 'players', sender.uid));
+      const storeDoc = await getDoc(doc(FIREBASE_DB, 'stores', sender.uid));
+      
+      console.log('Player doc exists:', playerDoc.exists());
+      console.log('Store doc exists:', storeDoc.exists());
+      
+      let senderProfile: any = null;
+      let senderType: 'player' | 'store' | null = null;
+      
+      if (playerDoc.exists()) {
+        senderProfile = playerDoc.data();
+        senderType = 'player';
+      } else if (storeDoc.exists()) {
+        senderProfile = storeDoc.data();
+        senderType = 'store';
+      }
+
+      if (!senderProfile || !senderType) {
+        console.error('No sender profile found');
         throw new Error('Sender profile not found');
       }
 
-      // Verify receiver exists
-      const receiverDoc = await getDoc(doc(FIREBASE_DB, 'players', receiverId));
-      if (!receiverDoc.exists()) {
-        throw new Error('Receiver not found');
-      }
+      console.log('Sender type:', senderType);
+      console.log('Sender profile:', senderProfile);
 
-      const senderName = userDoc.data().username || 'Unknown User';
-      const now = new Date();
-
+      // Create message data
       const messageData = {
-        senderId: user.uid,
-        senderName,
+        senderId: sender.uid,
+        senderName: senderProfile.username || senderProfile.storeName || 'Unknown',
+        senderType,
         receiverId,
-        message: message.trim(),
+        message,
         timestamp: serverTimestamp(),
         read: false,
-        type: discId ? 'alert' : 'message',
-        participants: [user.uid, receiverId],
-        ...(discId && { discId }),
-        createdAt: now.toISOString(),
+        participants: [sender.uid, receiverId].sort(),
+        createdAt: new Date().toISOString(),
+        ...(discId && { discId })
       };
 
-      const messagesRef = collection(FIREBASE_DB, 'messages');
-      await addDoc(messagesRef, messageData);
+      console.log('Message data to be sent:', messageData);
 
-    } catch (error: any) {
-      console.error('Error sending message:', error);
+      // Add to Firestore
+      const docRef = await addDoc(collection(FIREBASE_DB, 'messages'), messageData);
+      console.log('Message added to Firestore with ID:', docRef.id);
+
+      // Notification logic
+      if (sender.uid !== receiverId) {
+        console.log('=== Notification Check ===');
+        console.log('Current user (sender):', sender.uid);
+        console.log('Receiver:', receiverId);
+        console.log('Checking receiver notification preferences...');
+        
+        const receiverDoc = await getDoc(doc(FIREBASE_DB, 'players', receiverId));
+        console.log('Receiver doc exists:', receiverDoc.exists());
+        
+        const receiverProfile = receiverDoc.data();
+        console.log('Receiver profile:', receiverProfile);
+        console.log('Receiver notification preferences:', receiverProfile?.contactPreferences);
+
+        if (receiverProfile?.contactPreferences?.inApp) {
+          console.log('Attempting to send notification to:', receiverId);
+          console.log('From sender:', messageData.senderName);
+          
+          // Use sendMessageNotification instead of scheduleLocalNotification
+          await notificationService.sendMessageNotification(
+            receiverId,
+            messageData.senderName,
+            message,
+            sender.uid
+          );
+        }
+      }
+
+      console.log('=== Send Message Completed Successfully ===');
+    } catch (error) {
+      console.error('=== Send Message Error ===');
+      console.error('Error details:', error);
       throw error;
     }
   };
@@ -241,12 +282,33 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getConversationMessages = (otherUserId: string) => {
-    if (!user) return [];
+    console.log('=== Getting Conversation Messages ===');
+    console.log('Current user:', user?.uid);
+    console.log('Other user:', otherUserId);
+    console.log('Total messages:', messages.length);
     
-    return messages.filter(message => 
-      (message.senderId === user.uid && message.receiverId === otherUserId) ||
-      (message.senderId === otherUserId && message.receiverId === user.uid)
-    ).sort((a, b) => {
+    if (!user) {
+      console.log('No user found, returning empty array');
+      return [];
+    }
+    
+    const filtered = messages.filter(message => {
+      const isInConversation = 
+        (message.senderId === user.uid && message.receiverId === otherUserId) ||
+        (message.senderId === otherUserId && message.receiverId === user.uid);
+      
+      console.log('Message check:', {
+        messageId: message.id,
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        isInConversation
+      });
+      
+      return isInConversation;
+    });
+
+    console.log('Filtered message count:', filtered.length);
+    return filtered.sort((a, b) => {
       const timeA = a.timestamp?.toDate?.()?.getTime() || new Date(a.createdAt).getTime();
       const timeB = b.timestamp?.toDate?.()?.getTime() || new Date(b.createdAt).getTime();
       return timeA - timeB;
@@ -290,61 +352,44 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteConversation = async (conversationId: string) => {
-    if (!user) {
-      console.log('No user found');
-      return;
-    }
     try {
-      console.log('Starting conversation deletion for:', conversationId);
-      const [user1, user2] = conversationId.split('_');
-      const otherUserId = user1 === user.uid ? user2 : user1;
-      console.log('Other user ID:', otherUserId);
+      if (!user) throw new Error('No authenticated user');
 
+      // Get all messages between these users
       const messagesRef = collection(FIREBASE_DB, 'messages');
-      // Single query that gets all messages where user is either sender or receiver
       const q = query(
         messagesRef,
-        where('senderId', 'in', [user.uid, otherUserId]),
-        where('receiverId', 'in', [user.uid, otherUserId])
+        where('participants', 'array-contains', user.uid)
       );
-      
-      console.log('Fetching messages...');
-      const snapshot = await getDocs(q);
-      console.log('Found messages:', snapshot.size);
-      
+
+      const querySnapshot = await getDocs(q);
       const batch = writeBatch(FIREBASE_DB);
       let updateCount = 0;
 
-      snapshot.docs.forEach((doc) => {
-        const message = doc.data();
-        console.log('Processing message:', doc.id);
+      querySnapshot.forEach((doc) => {
+        const messageData = doc.data();
+        const messageParticipants = messageData.participants || [];
         
-        const deletedBy = message.deletedBy || [];
-        if (!deletedBy.includes(user.uid)) {
+        // Check if this message belongs to the conversation we want to delete
+        const participantsMatch = messageParticipants.length === 2 && 
+          messageParticipants.includes(user.uid) && 
+          messageParticipants.sort().join('_') === conversationId;
+
+        if (participantsMatch) {
+          batch.delete(doc.ref);
           updateCount++;
-          if (deletedBy.length === 0) {
-            console.log('Marking message for deletion:', doc.id);
-            batch.update(doc.ref, {
-              deletedBy: [user.uid]
-            });
-          } else {
-            console.log('Deleting message completely:', doc.id);
-            batch.delete(doc.ref);
-          }
         }
       });
 
-      console.log('Updates to make:', updateCount);
       if (updateCount > 0) {
         await batch.commit();
-        console.log('Batch commit successful');
+        console.log(`Deleted ${updateCount} messages from conversation`);
       } else {
-        console.log('No updates needed');
+        console.log('No messages found to delete');
       }
-      
-      console.log('Conversation deletion handled successfully');
+
     } catch (error) {
-      console.error('Error handling conversation deletion:', error);
+      console.error('Error deleting conversation:', error);
       throw error;
     }
   };

@@ -10,10 +10,20 @@
         },
         {
           "fieldPath": "timestamp",
-          "order": "DESCENDING"
+          "order": "DESC"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "receiverId",
+          "order": "ASCENDING"
         },
         {
-          "fieldPath": "__name__",
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]

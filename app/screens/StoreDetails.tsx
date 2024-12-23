@@ -39,6 +39,7 @@ const StoreDetails = () => {
           website: data.website || '',
           hours: data.hours || '',
           avatarUrl: data.avatarUrl || '',
+          holdTime: data.holdTime || 3,
         });
         setStoreName(data.storeName || 'Store');
       }
@@ -152,7 +153,9 @@ const StoreDetails = () => {
             style={styles.card}
           >
             <Text style={styles.cardLabel}>Hold Time Policy</Text>
-            <Text style={styles.cardValue}>{profile.holdTime ? `${profile.holdTime} Days` : '3 Days'}</Text>
+            <Text style={styles.cardValue}>
+              {profile.holdTime ? `${profile.holdTime} ${profile.holdTime === 1 ? 'Day' : 'Days'}` : '3 Days'}
+            </Text>
           </LinearGradient>
 
           {/* Edit Button */}
@@ -229,7 +232,8 @@ const styles = StyleSheet.create({
   },
   editButton: {
     borderRadius: 8,
-    marginTop: 8,
+    marginTop: 6,
+    marginBottom: 28,
   },
   editButtonContent: {
     flexDirection: 'row',
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 2,
     borderWidth: 1,
     borderColor: 'rgba(68, 255, 161, 0.2)',
   },
@@ -254,7 +258,7 @@ const styles = StyleSheet.create({
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 14,
     color: '#A1A1AA',
-    marginTop: 12,
+    marginTop: 2,
     marginBottom: 4,
   },
   cardValue: {

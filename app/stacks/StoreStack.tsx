@@ -9,6 +9,8 @@ import StoreDetails from '../screens/StoreDetails';
 import { StoreProfile } from '../types/Profile';
 import EditStoreProfile from '../screens/EditStoreProfile';
 import StoreInventory from '../screens/StoreInventory';
+import MessageDetail from '../screens/MessageDetail';
+import NewMessage from '../screens/NewMessage';
 
 export type StoreStackParamList = {
   StoreBottomTabs: undefined;
@@ -20,6 +22,16 @@ export type StoreStackParamList = {
   StoreDetails: undefined;
   EditStoreProfile: { profile: StoreProfile };
   StoreInventory: { storeId: string };
+  MessageDetail: {
+    messageId: string;
+    receiverInfo: {
+      id: string;
+      name: string;
+      discName?: string;
+      initialMessage?: string;
+    };
+  };
+  NewMessage: undefined;
 };
 
 const Stack = createNativeStackNavigator<StoreStackParamList>();
@@ -55,6 +67,14 @@ export default function StoreStackNavigator() {
         name="StoreInventory"
         component={StoreInventory}
         initialParams={{ storeId: 'oHbdQ0UK9NYztDYLAsy9Oq67dld2' }}
+      />
+      <Stack.Screen 
+        name="MessageDetail" 
+        component={MessageDetail} 
+      />
+      <Stack.Screen 
+        name="NewMessage" 
+        component={NewMessage} 
       />
     </Stack.Navigator>
   );

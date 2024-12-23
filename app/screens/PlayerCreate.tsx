@@ -9,7 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { hasPushNotificationBeenAsked, setPushNotificationAsked } from '../utils/storage';
+import * as Notifications from 'expo-notifications';
+import { notificationService } from '../services/notificationService';
 
 const US_STATES = [
   { name: 'Alabama', abbreviation: 'AL' },
@@ -92,6 +95,52 @@ const PlayerCreate = () => {
 
   const [username, setUsername] = useState('');
 
+  const askForNotificationPermission = async () => {
+    try {
+      const hasBeenAsked = await hasPushNotificationBeenAsked();
+      if (true) {
+        return new Promise<void>((resolve) => {
+          Alert.alert(
+            "Enable Notifications",
+            "Allow notifications to receive updates when:\n\n" +
+            "• Someone finds your disc\n" +
+            "• You receive a message\n" +
+            "• Your disc is ready for pickup",
+            [
+              {
+                text: "Not Now",
+                style: "cancel",
+                onPress: async () => {
+                  await setPushNotificationAsked();
+                  await updateDoc(doc(FIREBASE_DB, 'players', FIREBASE_AUTH.currentUser!.uid), {
+                    pushEnabled: false
+                  });
+                  resolve();
+                }
+              },
+              {
+                text: "Enable",
+                onPress: async () => {
+                  const { status } = await Notifications.requestPermissionsAsync();
+                  await setPushNotificationAsked();
+                  if (status === Notifications.PermissionStatus.GRANTED) {
+                    await notificationService.registerForPushNotifications();
+                    await updateDoc(doc(FIREBASE_DB, 'players', FIREBASE_AUTH.currentUser!.uid), {
+                      pushEnabled: true
+                    });
+                  }
+                  resolve();
+                }
+              }
+            ]
+          );
+        });
+      }
+    } catch (error) {
+      console.error('Error asking for notification permission:', error);
+    }
+  };
+
   const handleSignUp = async () => {
     try {
       if (!formData.email || !formData.password || !username || !formData.firstName || !formData.lastName) {
@@ -121,12 +170,16 @@ const PlayerCreate = () => {
         contactPreferences: {
           email: true,
           phone: true,
-          inApp: true,
+          inApp: false
         },
+        pushEnabled: false,
         createdAt: new Date().toISOString(),
       });
 
-      // Explicitly navigate to PlayerStack after successful signup
+      // Ask for notification permission before navigating
+      await askForNotificationPermission();
+
+      // Navigate only after notification decision
       navigation.reset({
         index: 0,
         routes: [{ name: 'PlayerStack' }],
@@ -338,7 +391,7 @@ const PlayerCreate = () => {
       </ScrollView>
 
       {/* Navigation Bar */}
-      <View style={styles.navbar}>
+      {/* <View style={styles.navbar}>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color="#A1A1AA" />
         </TouchableOpacity>
@@ -361,7 +414,7 @@ const PlayerCreate = () => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="settings" size={24} color="#A1A1AA" />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </LinearGradient>
   );
 };

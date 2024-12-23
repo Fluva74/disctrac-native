@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TextInputProps, StyleProp, ViewStyle, TextStyle } from 'react-native';
 
 interface InputProps extends TextInputProps {
   label: string;
+  containerStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
-export function Input({ label, ...props }: InputProps) {
+export function Input({ label, containerStyle, labelStyle, ...props }: InputProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={[styles.container, containerStyle]}>
+      <Text style={[styles.label, labelStyle]}>{label}</Text>
       <TextInput
         style={styles.input}
         placeholderTextColor="#71717A"

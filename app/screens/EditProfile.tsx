@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, Modal, ScrollView } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert, Modal, ScrollView, RefreshControl, Switch } from 'react-native';
 import { Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import ScreenTemplate from '../components/ScreenTemplate';
 import { Input } from '../components/Input';
@@ -14,23 +14,31 @@ import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Image } from 'react-native';
 import { InitialsAvatar } from '../components/InitialsAvatar';
+import { NotificationToggle } from '../components/NotificationToggle';
+import { useFocusEffect } from '@react-navigation/native';
+import { debounce } from 'lodash';
 
 type EditProfileRouteProp = RouteProp<PlayerStackParamList, 'EditProfile'>;
 
 const EditProfile = () => {
   const route = useRoute<EditProfileRouteProp>();
   const navigation = useNavigation();
-  const { profile } = route.params;
+  const { profile: initialProfile } = route.params;
+  const user = FIREBASE_AUTH.currentUser;
+  const [profile, setProfile] = useState<PlayerProfile>(initialProfile);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  const [firstName, setFirstName] = useState(profile.firstName || '');
-  const [lastName, setLastName] = useState(profile.lastName || '');
+  const [firstName, setFirstName] = useState(initialProfile.firstName || '');
+  const [lastName, setLastName] = useState(initialProfile.lastName || '');
   const [email, setEmail] = useState(profile.email || '');
   const [phone, setPhone] = useState(profile.phone || '');
   const [pdgaNumber, setPdgaNumber] = useState(profile.pdgaNumber || '');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [contactPreferences, setContactPreferences] = useState({
-    email: profile.email ? (profile.contactPreferences?.email ?? false) : false,
-    phone: profile.phone ? (profile.contactPreferences?.phone ?? false) : false,
+    email: profile.contactPreferences?.email || false,
+    phone: profile.contactPreferences?.phone || false,
     inApp: profile.contactPreferences?.inApp ?? true,
   });
   const [showRequiredModal, setShowRequiredModal] = useState(false);
@@ -55,6 +63,31 @@ const EditProfile = () => {
   const handlePhoneChange = (text: string) => {
     const formattedNumber = formatPhoneNumber(text);
     setPhone(formattedNumber);
+    
+    // Check if phone number is complete (10 digits)
+    const phoneDigits = formattedNumber.replace(/\D/g, '');
+    if (phoneDigits.length === 10) {
+      // Create a temporary profile object with the new phone number
+      const tempProfile = {
+        ...profile,
+        phone: formattedNumber
+      };
+      setProfile(tempProfile);
+    } else {
+      // If phone number is incomplete, update profile to remove phone
+      const tempProfile = {
+        ...profile,
+        phone: ''
+      };
+      setProfile(tempProfile);
+      // Also uncheck phone contact preference if it was checked
+      if (contactPreferences.phone) {
+        setContactPreferences({
+          ...contactPreferences,
+          phone: false
+        });
+      }
+    }
   };
 
   const validateForm = () => {
@@ -99,12 +132,11 @@ const EditProfile = () => {
   };
 
   const handleUpdateProfile = async () => {
-    if (!validateForm()) return;
-
     try {
-      const user = FIREBASE_AUTH.currentUser;
+      setIsUpdating(true);
+      if (!validateForm()) return;
       if (!user) return;
-
+      
       const userRef = doc(FIREBASE_DB, 'players', user.uid);
       await updateDoc(userRef, {
         firstName,
@@ -112,55 +144,92 @@ const EditProfile = () => {
         email,
         phone,
         pdgaNumber,
-        contactPreferences,
         avatarUrl,
+        contactPreferences
       });
 
+      await fetchProfile(); // Refresh profile data after update
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  const handleContactPreferenceChange = (type: 'email' | 'phone' | 'inApp') => {
-    setContactPreferences(prev => {
-      // If trying to toggle email but no email exists
-      if (type === 'email' && !email) {
-        Alert.alert('Email Required', 'Please add an email address to enable email contact.');
-        return prev;
-      }
+  const handlePreferenceToggle = async (type: 'email' | 'phone' | 'inApp') => {
+    // Prevent toggling inApp messaging
+    if (type === 'inApp') return;
 
-      // If trying to toggle phone but no phone exists
-      if (type === 'phone' && !phone) {
-        Alert.alert('Phone Required', 'Please add a phone number to enable phone contact.');
-        return prev;
-      }
-
+    try {
       const newPreferences = {
-        ...prev,
-        [type]: !prev[type]
+        ...contactPreferences,
+        [type]: !contactPreferences[type]
       };
+      
+      // Ensure inApp is always true
+      newPreferences.inApp = true;
 
-      // If trying to uncheck in-app messaging and no other method is selected
-      if (type === 'inApp' && !newPreferences.inApp && 
-          !newPreferences.email && !newPreferences.phone) {
-        setShowRequiredModal(true);
-        return prev;
-      }
-
-      // If trying to uncheck the last selected method
-      const anyMethodSelected = newPreferences.email || 
-                              newPreferences.phone || 
-                              newPreferences.inApp;
-      if (!anyMethodSelected) {
-        setShowRequiredModal(true);
-        return prev;
-      }
-
-      return newPreferences;
-    });
+      setContactPreferences(newPreferences);
+      
+      if (!user) return;
+      
+      const userRef = doc(FIREBASE_DB, 'players', user.uid);
+      await updateDoc(userRef, {
+        'contactPreferences': newPreferences
+      });
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      Alert.alert('Error', 'Failed to update preferences');
+    }
   };
+
+  const fetchProfile = async () => {
+    try {
+      if (isFetching) return;
+      setIsFetching(true);
+      setIsLoading(true);
+      if (!user) return;
+      const docRef = doc(FIREBASE_DB, 'players', user.uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const updatedProfile = docSnap.data() as PlayerProfile;
+        setProfile(updatedProfile);
+        // Only update contact preferences if they've changed
+        const newPreferences = {
+          email: updatedProfile.contactPreferences?.email || false,
+          phone: updatedProfile.contactPreferences?.phone || false,
+          inApp: updatedProfile.contactPreferences?.inApp ?? true,
+        };
+        if (JSON.stringify(newPreferences) !== JSON.stringify(contactPreferences)) {
+          setContactPreferences(newPreferences);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setIsLoading(false);
+      setIsFetching(false);
+    }
+  };
+
+  // Use a more stable version of the debounced fetch
+  const debouncedFetch = useCallback(
+    debounce(async () => {
+      if (!isFetching) {
+        await fetchProfile();
+      }
+    }, 500),
+    [isFetching]
+  );
+
+  // Clean up debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedFetch.cancel();
+    };
+  }, [debouncedFetch]);
 
   const renderSuccessModal = () => (
     <Modal
@@ -222,22 +291,40 @@ const EditProfile = () => {
   );
 
   const renderContactPreferences = () => (
-    <View style={styles.preferencesContainer}>
-      <Text style={styles.preferencesTitle}>Contact Preferences</Text>
-      <Text style={styles.preferencesSubtitle}>
-        Choose how others can contact you when they find your disc
+    <View style={styles.settingsSection}>
+      <Text style={styles.sectionTitle}>Contact Preferences</Text>
+      <Text style={styles.sectionDescription}>
+        Choose how you want to be contacted when your disc is found
       </Text>
+
+      <TouchableOpacity style={styles.preferenceItem}>
+        <LinearGradient
+          colors={['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.preferenceGradient}
+        >
+          <View style={styles.preferenceContent}>
+            <View>
+              <Text style={styles.preferenceLabel}>In-App Messaging</Text>
+              <Text style={styles.preferenceDescription}>
+                Default messaging method for DiscTrac
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[
           styles.preferenceItem,
-          !email && styles.preferenceItemDisabled
+          !profile.email && styles.preferenceItemDisabled
         ]}
-        onPress={() => handleContactPreferenceChange('email')}
-        disabled={!email}
+        onPress={() => handlePreferenceToggle('email')}
+        disabled={!profile.email}
       >
         <LinearGradient
-          colors={!email 
+          colors={!profile.email 
             ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
             : contactPreferences.email 
               ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
@@ -249,14 +336,14 @@ const EditProfile = () => {
           <View style={styles.preferenceContent}>
             <Text style={[
               styles.preferenceText,
-              !email && styles.preferenceTextDisabled
+              !profile.email && styles.preferenceTextDisabled
             ]}>
               Email Contact
             </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.email ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={!email ? "#52525B" : contactPreferences.email ? "#44FFA1" : "#A1A1AA"} 
+              color={!profile.email ? "#52525B" : contactPreferences.email ? "#44FFA1" : "#A1A1AA"} 
             />
           </View>
         </LinearGradient>
@@ -265,13 +352,13 @@ const EditProfile = () => {
       <TouchableOpacity
         style={[
           styles.preferenceItem,
-          !phone && styles.preferenceItemDisabled
+          !profile.phone && styles.preferenceItemDisabled
         ]}
-        onPress={() => handleContactPreferenceChange('phone')}
-        disabled={!phone}
+        onPress={() => handlePreferenceToggle('phone')}
+        disabled={!profile.phone}
       >
         <LinearGradient
-          colors={!phone 
+          colors={!profile.phone 
             ? ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']
             : contactPreferences.phone 
               ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
@@ -283,48 +370,48 @@ const EditProfile = () => {
           <View style={styles.preferenceContent}>
             <Text style={[
               styles.preferenceText,
-              !phone && styles.preferenceTextDisabled
+              !profile.phone && styles.preferenceTextDisabled
             ]}>
               Phone Contact
             </Text>
             <MaterialCommunityIcons 
               name={contactPreferences.phone ? "checkbox-marked" : "checkbox-blank-outline"} 
               size={24} 
-              color={!phone ? "#52525B" : contactPreferences.phone ? "#44FFA1" : "#A1A1AA"} 
-            />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.preferenceItem,
-        ]}
-        onPress={() => handleContactPreferenceChange('inApp')}
-      >
-        <LinearGradient
-          colors={contactPreferences.inApp 
-            ? ['rgba(68, 255, 161, 0.2)', 'rgba(77, 159, 255, 0.2)']
-            : ['rgba(24, 24, 27, 0.5)', 'rgba(24, 24, 27, 0.5)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.preferenceGradient}
-        >
-          <View style={styles.preferenceContent}>
-            <Text style={[
-              styles.preferenceText,
-            ]}>
-              In-App Messaging
-            </Text>
-            <MaterialCommunityIcons 
-              name={contactPreferences.inApp ? "checkbox-marked" : "checkbox-blank-outline"} 
-              size={24} 
-              color={contactPreferences.inApp ? "#44FFA1" : "#A1A1AA"} 
+              color={!profile.phone ? "#52525B" : contactPreferences.phone ? "#44FFA1" : "#A1A1AA"} 
             />
           </View>
         </LinearGradient>
       </TouchableOpacity>
     </View>
+  );
+
+  const renderNotificationSettings = () => (
+    <View style={styles.settingsSection}>
+      <Text style={styles.sectionTitle}>Notification Settings</Text>
+      <Text style={styles.sectionDescription}>
+        Choose when you want to be notified
+      </Text>
+      
+      <NotificationToggle
+        userId={user?.uid ?? ''}
+        collectionName="players"
+        contactPreferences={contactPreferences}
+        onUpdate={debouncedFetch}
+      />
+
+      <Text style={styles.notificationHint}>
+        You'll receive notifications when:
+        {'\n'} • Someone finds your disc
+        {'\n'} • You receive a message
+        {'\n'} • Your disc is at a store for pickup
+      </Text>
+    </View>
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchProfile();
+    }, [])
   );
 
   return (
@@ -333,6 +420,13 @@ const EditProfile = () => {
         style={styles.content} 
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={fetchProfile}
+            tintColor="#44FFA1"
+          />
+        }
       >
         <TouchableOpacity 
           style={styles.avatarContainer}
@@ -394,6 +488,8 @@ const EditProfile = () => {
         />
 
         {renderContactPreferences()}
+
+        {renderNotificationSettings()}
 
         <TouchableOpacity style={styles.updateButton} onPress={handleUpdateProfile}>
           <LinearGradient
@@ -490,12 +586,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   preferenceItem: {
-    marginBottom: 8,
+    marginBottom: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   preferenceGradient: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(68, 255, 161, 0.2)',
+    width: '100%',
   },
   preferenceContent: {
     flexDirection: 'row',
@@ -503,10 +599,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
   },
+  preferenceLabel: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  preferenceDescription: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
   preferenceText: {
     fontFamily: 'LeagueSpartan_400Regular',
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  preferenceTextDisabled: {
+    color: '#52525B',
+  },
+  preferenceItemDisabled: {
+    opacity: 0.5,
   },
   avatarContainer: {
     alignItems: 'center',
@@ -531,11 +643,30 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#09090B',
   },
-  preferenceItemDisabled: {
-    opacity: 0.5,
+  settingsSection: {
+    marginTop: 24,
+    gap: 16,
+    paddingBottom: 16,
   },
-  preferenceTextDisabled: {
-    color: '#52525B',
+  sectionTitle: {
+    fontFamily: 'LeagueSpartan_700Bold',
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  sectionDescription: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 14,
+    color: '#A1A1AA',
+    marginBottom: 8,
+  },
+  notificationHint: {
+    fontFamily: 'LeagueSpartan_400Regular',
+    fontSize: 14,
+    color: '#A1A1AA',
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 16,
+    lineHeight: 24,
   },
 });
 

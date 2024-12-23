@@ -8,12 +8,14 @@ import { FIREBASE_AUTH, FIREBASE_DB } from '../../FirebaseConfig';
 import { RootStackParamList } from '../../App';
 import { useFonts, LeagueSpartan_400Regular, LeagueSpartan_700Bold } from '@expo-google-fonts/league-spartan';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { handleNewSignIn } = useAuth();
   const [fontsLoaded] = useFonts({
     LeagueSpartan_400Regular,
     LeagueSpartan_700Bold,
@@ -49,10 +51,12 @@ const Login = () => {
 
       let userDoc = await getDoc(doc(FIREBASE_DB, 'players', user.uid));
       if (userDoc.exists()) {
+        await handleNewSignIn();
         navigation.navigate('PlayerStack');
       } else {
         userDoc = await getDoc(doc(FIREBASE_DB, 'stores', user.uid));
         if (userDoc.exists()) {
+          await handleNewSignIn();
           navigation.navigate('StoreStack');
         } else {
           alert('User data not found.');
